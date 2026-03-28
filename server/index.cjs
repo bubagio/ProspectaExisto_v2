@@ -136,11 +136,44 @@ async function autoSeed() {
     );
   });
 
-  // 2. Articoli (solo se non ce ne sono già)
+  // 2. Roles predefiniti
+  db.get('SELECT COUNT(*) as n FROM roles', [], (err, row) => {
+    if (err || row.n > 0) return;
+    const roles = ['SDR', 'Account Executive', 'Sales Manager', 'Director Comercial', 'Business Developer'];
+    roles.forEach(name => db.run('INSERT INTO roles (name, is_active) VALUES (?, 1)', [name]));
+    console.log('✅ Roles auto-seeded:', roles.join(', '));
+  });
+
+  // 3. Survey di default
+  db.get('SELECT COUNT(*) as n FROM surveys', [], (err, row) => {
+    if (err || row.n > 0) return;
+    db.run(
+      `INSERT INTO surveys (title, description) VALUES (?, ?)`,
+      ['Diagnóstico de Prospección 2026', 'Evaluación del nivel de madurez en prospección comercial B2B para empresas en mercados hispanohablantes.'],
+      function(e) {
+        if (e) return;
+        const sid = this.lastID;
+        const questions = [
+          { text: '¿Cuántas reuniones cualificadas generas por semana?', type: 'radio', options: '["0-1","2-3","4-6","7+"]', order_num: 1 },
+          { text: '¿Qué canales usas habitualmente para prospectar?', type: 'checkbox', options: '["LinkedIn","Email frío","Teléfono","Eventos/networking","Referidos"]', order_num: 2 },
+          { text: '¿Tienes una cadencia de prospección documentada?', type: 'radio', options: '["Sí, siempre la sigo","Tengo una pero no siempre","No tengo cadencia","Estoy construyendo una"]', order_num: 3 },
+          { text: '¿Cuál es tu mayor dificultad en prospección?', type: 'text', options: '[]', order_num: 4 },
+          { text: 'En una escala del 1 al 10, ¿cómo valorarías tu proceso actual de prospección?', type: 'scale', options: '[]', order_num: 5 }
+        ];
+        questions.forEach(q =>
+          db.run('INSERT INTO questions (survey_id, text, type, options, order_num) VALUES (?,?,?,?,?)',
+            [sid, q.text, q.type, q.options, q.order_num])
+        );
+        console.log('✅ Survey + 5 domande auto-seeded');
+      }
+    );
+  });
+
+  // 4. Articoli (solo se non ce ne sono già)
   db.get('SELECT COUNT(*) as n FROM articles', [], (err, row) => {
-    if (err || row.n > 0) return; // già ci sono articoli
+    if (err || row.n > 0) return;
     db.get('SELECT id FROM users WHERE email = ?', ['baraccoy@gmail.com'], (e2, author) => {
-      if (e2 || !author) return; // aspetta che il superadmin esista
+      if (e2 || !author) return;
       seedArticles(author.id);
     });
   });
