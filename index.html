@@ -315,7 +315,7 @@
   <script type="module" src="/src/main.js"></script>
   <script>
     // Dynamic articles on home
-    fetch('http://localhost:3000/api/articles?limit=5')
+    fetch('http://localhost:3000/api/articles?limit=3')
       .then(r => r.json())
       .then(articles => {
         if (!articles || !articles.length) return;
