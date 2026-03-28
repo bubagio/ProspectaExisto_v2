@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acceso | Prospecta con Éxito</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1B3B5A;
+      --teal: #5D9CB5;
+      --cream: #F8F5E9;
+      --bg: #fafaf7;
+      --white: #ffffff;
+      --text: #2c3e50;
+      --muted: #6b7c8d;
+      --border: rgba(27,59,90,0.1);
+      --gradient: linear-gradient(135deg, #5D9CB5 0%, #1B3B5A 100%);
+      --radius: 16px;
+      --shadow: 0 20px 60px rgba(27,59,90,0.12);
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+    /* Background shapes */
+    body::before {
+      content:'';
+      position:fixed; top:-20%; right:-10%;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(93,156,181,0.08) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    body::after {
+      content:'';
+      position:fixed; bottom:-15%; left:-10%;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(27,59,90,0.06) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .auth-wrapper {
+      width: 100%;
+      max-width: 480px;
+      z-index: 1;
+    }
+
+    /* Logo area */
+    .auth-brand {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .auth-brand a {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--primary);
+    }
+    .auth-brand img {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      object-fit: cover;
+      box-shadow: 0 4px 16px rgba(27,59,90,0.15);
+    }
+    .auth-brand span {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 1.4rem;
+      color: var(--primary);
+    }
+
+    /* Card */
+    .auth-card {
+      background: var(--white);
+      border-radius: 24px;
+      padding: 2.5rem;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    .auth-card::before {
+      content:'';
+      position:absolute; top:0; left:0; right:0; height:3px;
+      background: var(--gradient);
+    }
+
+    /* Tabs */
+    .auth-tabs {
+      display: flex;
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border);
+    }
+    .auth-tab {
+      flex: 1;
+      text-align: center;
+      padding: 0.65rem 1rem;
+      border-radius: 9px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      color: var(--muted);
+      user-select: none;
+    }
+    .auth-tab.active {
+      background: var(--white);
+      color: var(--primary);
+      box-shadow: 0 2px 8px rgba(27,59,90,0.08);
+    }
+
+    /* Form panels */
+    .auth-panel { display: none; }
+    .auth-panel.active { display: block; }
+
+    /* Title */
+    .auth-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+    .auth-subtitle {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.8rem;
+    }
+
+    /* Google Button */
+    .btn-google {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      padding: 0.85rem 1.5rem;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      background: var(--white);
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      margin-bottom: 1.5rem;
+    }
+    .btn-google:hover {
+      border-color: var(--teal);
+      box-shadow: 0 4px 16px rgba(93,156,181,0.15);
+      transform: translateY(-1px);
+    }
+    .btn-google svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+    /* Divider */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .divider::before, .divider::after {
+      content:''; flex:1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Form fields */
+    .form-group { margin-bottom: 1.2rem; }
+    .form-label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.88rem;
+      color: var(--primary);
+      margin-bottom: 0.45rem;
+    }
+    .form-input {
+      width: 100%;
+      padding: 0.8rem 1.1rem;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: all 0.3s ease;
+    }
+    .form-input:focus {
+      border-color: var(--teal);
+      background: var(--white);
+      box-shadow: 0 0 0 3px rgba(93,156,181,0.12);
+    }
+    .form-input::placeholder { color: #bbb; }
+
+    /* Password toggle */
+    .input-wrapper { position: relative; }
+    .pwd-toggle {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 1rem;
+      user-select: none;
+    }
+
+    /* GDPR consent */
+    .gdpr-box {
+      background: rgba(93,156,181,0.06);
+      border: 1px solid rgba(93,156,181,0.2);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 1.2rem;
+    }
+    .gdpr-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .gdpr-check input[type="checkbox"] {
+      width: 18px; height: 18px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      accent-color: var(--teal);
+      cursor: pointer;
+    }
+    .gdpr-text {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .gdpr-text a { color: var(--teal); text-decoration: underline; }
+
+    /* Submit btn */
+    .btn-submit {
+      width: 100%;
+      padding: 0.9rem;
+      background: var(--gradient);
+      color: var(--white);
+      border: none;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 1rem;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(93,156,181,0.3);
+    }
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(93,156,181,0.45);
+    }
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Error/success messages */
+    .alert {
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .alert.show { display: block; }
+    .alert-error { background: #fff0f0; color: #c0392b; border: 1px solid #ffa5a5; }
+    .alert-success { background: #f0fff4; color: #27ae60; border: 1px solid #a5ffc5; }
+
+    /* Footer link */
+    .auth-footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .auth-footer a {
+      color: var(--teal);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    /* Privacy modal overlay */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(27,59,90,0.5);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--white);
+      border-radius: 20px;
+      padding: 2rem;
+      max-width: 600px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 30px 80px rgba(27,59,90,0.2);
+    }
+    .modal-box h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.4rem;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+    .modal-box p, .modal-box li {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 0.8rem;
+    }
+    .modal-box ul { padding-left: 1.2rem; margin-bottom: 0.8rem; }
+    .modal-close {
+      margin-top: 1.5rem;
+      padding: 0.65rem 1.8rem;
+      background: var(--gradient);
+      color: var(--white);
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    @media (max-width: 480px) {
+      .auth-card { padding: 1.8rem 1.4rem; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="auth-wrapper">
+    <!-- Brand -->
+    <div class="auth-brand">
+      <a href="/">
+        <img src="/logo.jpg" alt="Prospecta con Éxito">
+        <span>Prospecta con Éxito</span>
+      </a>
+    </div>
+
+    <!-- Auth card -->
+    <div class="auth-card">
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tab-login" onclick="switchTab('login')">Entrar</div>
+        <div class="auth-tab" id="tab-register" onclick="switchTab('register')">Crear cuenta</div>
+      </div>
+
+      <!-- ── LOGIN PANEL ── -->
+      <div class="auth-panel active" id="panel-login">
+        <h1 class="auth-title">Bienvenido de nuevo</h1>
+        <p class="auth-subtitle">Accede a tu cuenta para ver contenido exclusivo.</p>
+
+        <a href="http://localhost:3000/api/auth/google" class="btn-google" id="google-login-btn">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Continuar con Google
+        </a>
+
+        <div class="divider">o con correo electrónico</div>
+
+        <div id="alert-login" class="alert alert-error"></div>
+
+        <form id="form-login" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label class="form-label" for="login-email">Correo electrónico</label>
+            <input class="form-input" type="email" id="login-email" placeholder="tu@email.com" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="login-pwd">Contraseña</label>
+            <div class="input-wrapper">
+              <input class="form-input" type="password" id="login-pwd" placeholder="••••••••" required autocomplete="current-password">
+              <span class="pwd-toggle" onclick="togglePwd('login-pwd', this)">👁</span>
+            </div>
+          </div>
+          <button type="submit" class="btn-submit" id="btn-login">Entrar</button>
+        </form>
+      </div>
+
+      <!-- ── REGISTER PANEL ── -->
+      <div class="auth-panel" id="panel-register">
+        <h1 class="auth-title">Crea tu cuenta</h1>
+        <p class="auth-subtitle">Únete para acceder a contenido y recursos exclusivos.</p>
+
+        <a href="http://localhost:3000/api/auth/google" class="btn-google" id="google-register-btn">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Registrarse con Google
+        </a>
+
+        <div class="divider">o con correo electrónico</div>
+
+        <div id="alert-register" class="alert alert-error"></div>
+
+        <form id="form-register" onsubmit="handleRegister(event)">
+          <div class="form-group">
+            <label class="form-label" for="reg-name">Nombre completo</label>
+            <input class="form-input" type="text" id="reg-name" placeholder="Tu nombre" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reg-email">Correo electrónico</label>
+            <input class="form-input" type="email" id="reg-email" placeholder="tu@email.com" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reg-pwd">Contraseña</label>
+            <div class="input-wrapper">
+              <input class="form-input" type="password" id="reg-pwd" placeholder="Mínimo 8 caracteres" required minlength="8" autocomplete="new-password">
+              <span class="pwd-toggle" onclick="togglePwd('reg-pwd', this)">👁</span>
+            </div>
+          </div>
+
+          <!-- GDPR -->
+          <div class="gdpr-box">
+            <label class="gdpr-check">
+              <input type="checkbox" id="gdpr-consent" required>
+              <span class="gdpr-text">
+                He leído y acepto la <a href="#" onclick="openModal('privacy')">Política de Privacidad</a>
+                y los <a href="#" onclick="openModal('terms')">Términos de Uso</a>. Consiento el tratamiento
+                de mis datos personales conforme al <strong>Reglamento General de Protección de Datos (RGPD)</strong>.
+              </span>
+            </label>
+          </div>
+
+          <button type="submit" class="btn-submit" id="btn-register">Crear cuenta</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Footer note -->
+    <p class="auth-footer">
+      ¿Necesitas ayuda? <a href="mailto:prospecta@prospectaconexito.com">Contáctanos</a>
+    </p>
+  </div>
+
+  <!-- ── Privacy Modal ── -->
+  <div class="modal-overlay" id="modal-privacy">
+    <div class="modal-box">
+      <h2>🔒 Política de Privacidad</h2>
+      <p><strong>Responsable:</strong> Prospecta con Éxito · prospecta@prospectaconexito.com</p>
+      <p><strong>Finalidad:</strong> Gestionar tu registro, el acceso a contenido exclusivo y, si lo autorizas, el envío de comunicaciones.</p>
+      <p><strong>Legitimación:</strong> Tu consentimiento explícito (Art. 6.1.a RGPD).</p>
+      <p><strong>Destinatarios:</strong> No cedemos tus datos a terceros salvo obligación legal.</p>
+      <p><strong>Derechos:</strong> Puedes ejercer tus derechos de acceso, rectificación, supresión, portabilidad y oposición escribiendo a prospecta@prospectaconexito.com. También puedes reclamar ante la Agencia Española de Protección de Datos (aepd.es).</p>
+      <p><strong>Conservación:</strong> Tus datos se conservarán mientras mantengas la cuenta activa o solicites su supresión.</p>
+      <button class="modal-close" onclick="closeModal('privacy')">Entendido</button>
+    </div>
+  </div>
+
+  <!-- ── Terms Modal ── -->
+  <div class="modal-overlay" id="modal-terms">
+    <div class="modal-box">
+      <h2>📋 Términos de Uso</h2>
+      <p>Al registrarte en Prospecta con Éxito aceptas las siguientes condiciones:</p>
+      <ul>
+        <li>Utilizarás la plataforma para fines legítimos y no comerciales sin autorización previa.</li>
+        <li>No compartirás el contenido exclusivo con terceros.</li>
+        <li>Mantendrás la confidencialidad de tus credenciales de acceso.</li>
+        <li>Prospecta con Éxito se reserva el derecho de suspender cuentas que incumplan estas condiciones.</li>
+        <li>El contenido de la plataforma está protegido por derechos de autor y no puede ser reproducido sin permiso.</li>
+      </ul>
+      <p>Para cualquier consulta: prospecta@prospectaconexito.com</p>
+      <button class="modal-close" onclick="closeModal('terms')">Entendido</button>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:3000/api';
+
+    // ── Tab switch ──────────────────────────────────────────────
+    function switchTab(tab) {
+      document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.auth-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      document.getElementById('panel-' + tab).classList.add('active');
+    }
+
+    // ── Password toggle ─────────────────────────────────────────
+    function togglePwd(id, el) {
+      const input = document.getElementById(id);
+      input.type = input.type === 'password' ? 'text' : 'password';
+      el.textContent = input.type === 'password' ? '👁' : '🙈';
+    }
+
+    // ── Show alert ──────────────────────────────────────────────
+    function showAlert(id, msg, type = 'error') {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.className = `alert alert-${type} show`;
+    }
+    function hideAlert(id) {
+      document.getElementById(id).classList.remove('show');
+    }
+
+    // ── Modal ───────────────────────────────────────────────────
+    function openModal(name) {
+      event.preventDefault();
+      document.getElementById('modal-' + name).classList.add('open');
+    }
+    function closeModal(name) {
+      document.getElementById('modal-' + name).classList.remove('open');
+    }
+    document.querySelectorAll('.modal-overlay').forEach(m => {
+      m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+    });
+
+    // ── Login ───────────────────────────────────────────────────
+    async function handleLogin(e) {
+      e.preventDefault();
+      hideAlert('alert-login');
+      const btn = document.getElementById('btn-login');
+      btn.disabled = true; btn.textContent = 'Entrando…';
+
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-pwd').value;
+
+      try {
+        const res = await fetch(`${API}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al entrar');
+        saveAndRedirect(data);
+      } catch (err) {
+        showAlert('alert-login', err.message);
+        btn.disabled = false; btn.textContent = 'Entrar';
+      }
+    }
+
+    // ── Register ────────────────────────────────────────────────
+    async function handleRegister(e) {
+      e.preventDefault();
+      hideAlert('alert-register');
+      const btn = document.getElementById('btn-register');
+      btn.disabled = true; btn.textContent = 'Creando cuenta…';
+
+      const name = document.getElementById('reg-name').value;
+      const email = document.getElementById('reg-email').value;
+      const password = document.getElementById('reg-pwd').value;
+      const gdpr_consent = document.getElementById('gdpr-consent').checked;
+
+      try {
+        const res = await fetch(`${API}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, gdpr_consent })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al registrarse');
+        saveAndRedirect(data);
+      } catch (err) {
+        showAlert('alert-register', err.message);
+        btn.disabled = false; btn.textContent = 'Crear cuenta';
+      }
+    }
+
+    // ── Save token & redirect ───────────────────────────────────
+    function saveAndRedirect(data) {
+      localStorage.setItem('pce_token', data.token);
+      localStorage.setItem('pce_user', JSON.stringify(data.user));
+      const role = data.user?.role;
+      window.location.href = (role === 'admin' || role === 'superadmin') ? '/admin.html' : '/';
+    }
+
+    // ── Handle Google OAuth callback (token in URL) ─────────────
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('token')) {
+      const token = params.get('token');
+      const name = params.get('name') || '';
+      const role = params.get('role') || 'user';
+      localStorage.setItem('pce_token', token);
+      localStorage.setItem('pce_user', JSON.stringify({ name, role }));
+      window.location.href = (role === 'admin' || role === 'superadmin') ? '/admin.html' : '/';
+    }
+    if (params.get('error') === 'google_not_configured') {
+      switchTab('login');
+      showAlert('alert-login', '⚙️ Google OAuth no está configurado. Usa correo y contraseña.');
+    }
+
+    // ── If already logged in, redirect (only when no URL params present) ──
+    // Skip redirect if we came from an OAuth callback or error — let the user see the message
+    const existingToken = localStorage.getItem('pce_token');
+    const hasUrlParams = params.get('token') || params.get('error');
+    if (existingToken && !hasUrlParams) {
+      const user = JSON.parse(localStorage.getItem('pce_user') || '{}');
+      window.location.href = (user.role === 'admin' || user.role === 'superadmin') ? '/admin.html' : '/';
+    }
+  </script>
+</body>
+
+</html>

@@ -80,3 +80,55 @@ const statsObserver = new IntersectionObserver((entries) => {
 document.querySelectorAll('[data-count]').forEach(el => {
   statsObserver.observe(el);
 });
+
+// ===== Infinite Testimonial Carousel =====
+(function initCarousel() {
+  const track = document.getElementById('testimonialTrack');
+  if (!track) return;
+
+  // Duplicate cards for seamless infinite loop
+  const origCards = Array.from(track.children);
+  origCards.forEach(card => {
+    const clone = card.cloneNode(true);
+    clone.setAttribute('aria-hidden', 'true');
+    track.appendChild(clone);
+  });
+
+  let activeCard = null;
+
+  // Pause on hover of the wrapper
+  const wrapper = track.closest('.testimonial-carousel-wrapper');
+  wrapper.addEventListener('mouseenter', () => track.classList.add('paused'));
+  wrapper.addEventListener('mouseleave', () => {
+    // Keep paused if a card is actively selected
+    if (!activeCard) track.classList.remove('paused');
+  });
+
+  // Click to select / deselect a card
+  track.addEventListener('click', (e) => {
+    const card = e.target.closest('.tcard[aria-hidden!="true"]');
+    if (!card) return;
+
+    if (activeCard && activeCard !== card) {
+      activeCard.classList.remove('active');
+    }
+
+    card.classList.toggle('active');
+    activeCard = card.classList.contains('active') ? card : null;
+
+    if (activeCard) {
+      track.classList.add('paused');
+    } else {
+      track.classList.remove('paused');
+    }
+  });
+
+  // Click outside carousel → deselect & resume
+  document.addEventListener('click', (e) => {
+    if (!track.contains(e.target) && activeCard) {
+      activeCard.classList.remove('active');
+      activeCard = null;
+      track.classList.remove('paused');
+    }
+  });
+})();

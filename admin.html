@@ -2,203 +2,796 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8">
-    <title>Admin - Gestor de Encuestas</title>
-    <link rel="stylesheet" href="/src/style.css">
-    <style>
-        body {
-            padding-top: 100px;
-            background: #f0f4f8;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/jpeg" href="/logo.jpg">
+  <title>Admin | Prospecta con Éxito</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Quill Rich Text Editor -->
+  <link href="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.snow.css" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css">
+  <style>
+    body { background: #f0f4f8; padding-top: 80px; }
 
-        .admin-container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
+    /* ── Admin Nav ── */
+    .admin-nav {
+      background: var(--primary);
+      position: fixed;
+      top:0; width:100%; z-index:1000;
+      padding: 0.9rem 0;
+      box-shadow: 0 2px 20px rgba(27,59,90,0.2);
+    }
+    .admin-nav .nav-container { display:flex; justify-content:space-between; align-items:center; }
+    .admin-nav .brand-logo span { color:white; }
+    .nav-admin-actions { display:flex; gap:0.75rem; align-items:center; }
+    .nav-admin-actions span { color:rgba(255,255,255,0.7); font-size:0.85rem; }
 
-        .card-section {
-            margin-bottom: 2rem;
-            padding-bottom: 2rem;
-            border-bottom: 1px solid #eee;
-        }
+    /* ── Layout ── */
+    .admin-layout {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
 
-        .role-list {
-            list-style: none;
-            margin-top: 1rem;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 10px;
-        }
+    /* ── Sidebar nav ── */
+    .admin-sidebar {
+      background: white;
+      border-radius: 16px;
+      padding: 1.2rem;
+      box-shadow: 0 2px 12px rgba(27,59,90,0.06);
+      position: sticky;
+      top: 96px;
+    }
+    .admin-sidebar-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 0 0.5rem 0.75rem;
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .admin-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.7rem 0.75rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+    .admin-nav-item:hover { background: var(--cream); color: var(--primary); }
+    .admin-nav-item.active { background: rgba(93,156,181,0.1); color: var(--primary); border-color: rgba(93,156,181,0.2); }
 
-        .role-item {
-            padding: 0.8rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #f8fafc;
-        }
+    /* ── Admin cards ── */
+    .admin-card {
+      background: white;
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 2px 12px rgba(27,59,90,0.06);
+      border: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+    .admin-card.active { display: block; }
 
-        .link-box {
-            margin-top: 1.5rem;
-            padding: 1.5rem;
-            background: #f0f9ff;
-            border: 1px solid #bde0fe;
-            border-radius: 8px;
-        }
+    .admin-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .admin-card-header h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.3rem;
+      color: var(--primary);
+    }
 
-        .form-group {
-            margin-bottom: 1rem;
-        }
+    /* ── Forms ── */
+    .form-group { margin-bottom: 1.1rem; }
+    .form-label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--primary);
+      margin-bottom: 0.4rem;
+    }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1.5px solid rgba(27,59,90,0.12);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: all 0.3s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--teal);
+      background: white;
+      box-shadow: 0 0 0 3px rgba(93,156,181,0.12);
+    }
+    .form-textarea { min-height: 80px; resize: vertical; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
+    /* ── Quill ── */
+    .quill-wrapper {
+      border: 1.5px solid rgba(27,59,90,0.12);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color 0.3s;
+    }
+    .quill-wrapper:focus-within { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(93,156,181,0.12); }
+    #quillEditor { min-height: 350px; font-size: 0.95rem; font-family: 'Inter', sans-serif; }
+    .ql-toolbar { border: none !important; border-bottom: 1px solid rgba(27,59,90,0.1) !important; background: var(--cream); }
+    .ql-container { border: none !important; }
 
-        select,
-        input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 1rem;
-        }
+    /* Publish toggle */
+    .publish-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: var(--cream);
+      border-radius: 10px;
+      margin-bottom: 1.2rem;
+    }
+    .toggle-switch {
+      position: relative; width: 44px; height: 24px; flex-shrink:0;
+    }
+    .toggle-switch input { opacity:0; width:0; height:0; }
+    .toggle-slider {
+      position:absolute; inset:0; border-radius:24px;
+      background: rgba(27,59,90,0.2);
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .toggle-slider::before {
+      content:''; position:absolute;
+      width:18px; height:18px; left:3px; bottom:3px;
+      background:white; border-radius:50%;
+      transition: 0.3s;
+    }
+    .toggle-switch input:checked + .toggle-slider { background: var(--teal); }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+    .toggle-label { font-size: 0.88rem; font-weight: 600; color: var(--primary); }
 
-        .delete-btn {
-            color: #ef4444;
-            cursor: pointer;
-            font-size: 1.2rem;
-            font-weight: bold;
-            padding: 0 5px;
-        }
-    </style>
+    /* ── Articles table ── */
+    .articles-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    .articles-table th {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      background: var(--cream);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .articles-table th:first-child { border-radius: 8px 0 0 8px; }
+    .articles-table th:last-child { border-radius: 0 8px 8px 0; }
+    .articles-table td {
+      padding: 0.85rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      vertical-align: middle;
+    }
+    .articles-table tr:last-child td { border-bottom: none; }
+    .articles-table tr:hover td { background: rgba(93,156,181,0.03); }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.7rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .status-badge.published { background: #d1fae5; color: #065f46; }
+    .status-badge.draft { background: #fef3c7; color: #92400e; }
+
+    .table-actions { display: flex; gap: 0.5rem; }
+    .btn-icon {
+      padding: 0.4rem 0.7rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-edit { background: rgba(93,156,181,0.12); color: var(--primary); }
+    .btn-edit:hover { background: rgba(93,156,181,0.25); }
+    .btn-delete { background: rgba(239,68,68,0.1); color: #dc2626; }
+    .btn-delete:hover { background: rgba(239,68,68,0.2); }
+
+    /* ── Role list (existing) ── */
+    .role-list { list-style:none; margin-top:1rem; display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; }
+    .role-item { padding:0.8rem; border:1px solid #e2e8f0; border-radius:8px; display:flex; justify-content:space-between; align-items:center; background:#f8fafc; }
+    .delete-btn { color:#ef4444; cursor:pointer; font-size:1.2rem; font-weight:bold; padding:0 5px; }
+
+    /* ── Link box ── */
+    .link-box { margin-top:1.5rem; padding:1.5rem; background:#f0f9ff; border:1px solid #bde0fe; border-radius:8px; }
+
+    /* ── Bootstrap admin section ── */
+    .bootstrap-banner {
+      background: linear-gradient(135deg, #fff8e1, #fffde7);
+      border: 1px solid #f59e0b;
+      border-radius: 12px;
+      padding: 1.2rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+    .bootstrap-banner h4 { color: #92400e; margin-bottom: 0.5rem; font-size: 0.95rem; }
+    .bootstrap-banner p { color: #78350f; font-size: 0.85rem; margin-bottom: 0.75rem; }
+
+    /* Alert */
+    .msg { padding:0.75rem 1rem; border-radius:10px; font-size:0.88rem; margin-bottom:1rem; display:none; }
+    .msg.show { display:block; }
+    .msg-ok { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
+    .msg-err { background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; }
+
+    @media (max-width:768px) {
+      .admin-layout { grid-template-columns:1fr; }
+      .admin-sidebar { position:static; }
+      .form-row { grid-template-columns:1fr; }
+    }
+  </style>
 </head>
 
 <body>
-    <nav class="navbar">
-        <div class="container nav-container">
-            <a href="/" class="brand-logo">
-                <img src="/logo.jpg" alt="Logo" class="nav-logo">
-                <span>Admin Panel</span>
-            </a>
-            <a href="/dashboard.html" class="btn btn-outline"
-                style="color:var(--primary-color); border-color: var(--primary-color);">Ver Dashboard</a>
-        </div>
-    </nav>
-
-    <div class="container admin-container">
-        <h2>Generador de Enlaces</h2>
-        <p>Selecciona una encuesta y un rol para generar el link único.</p>
-
-        <div class="card-section">
-            <div class="form-group">
-                <label>1. Selecciona la Encuesta</label>
-                <select id="surveySelect">
-                    <!-- Populated by JS -->
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>2. Selecciona el Rol</label>
-                <select id="roleSelect">
-                    <!-- Populated by JS -->
-                </select>
-            </div>
-
-            <button onclick="generateLink()" class="btn btn-primary" style="width:100%">Generar Link</button>
-
-            <div id="resultBox" class="link-box" style="display:none;">
-                <strong>Link Generado:</strong>
-                <p id="generatedUrl" style="word-break: break-all; color: var(--secondary-color); margin: 0.5rem 0;">...
-                </p>
-                <button onclick="copyLink()" class="btn btn-outline sm">Copiar</button>
-            </div>
-        </div>
-
-        <h3>Gestión de Roles</h3>
-        <div class="input-group" style="display:flex; gap:10px; margin-bottom:1rem;">
-            <input type="text" id="newRoleName" placeholder="Nuevo Rol (ej. Sales Manager)">
-            <button onclick="createRole()" class="btn btn-primary">Añadir</button>
-        </div>
-
-        <ul id="rolesList" class="role-list">
-            <!-- Roles here -->
-        </ul>
+  <!-- Admin Nav -->
+  <nav class="admin-nav">
+    <div class="container nav-container">
+      <a href="/" class="brand-logo">
+        <img src="/logo.jpg" alt="Logo" class="nav-logo">
+        <span>Admin Panel</span>
+      </a>
+      <div class="nav-admin-actions">
+        <span id="adminUserName">…</span>
+        <a href="/dashboard.html" class="btn btn-outline sm">📊 Dashboard</a>
+        <a href="/recursos.html" class="btn btn-outline sm" target="_blank">🌐 Ver Recursos</a>
+        <button onclick="logout()" class="btn btn-outline sm">Salir</button>
+      </div>
     </div>
+  </nav>
 
-    <script>
-        const API_URL = 'http://localhost:3000/api';
+  <div class="admin-layout">
+    <!-- Sidebar navigation -->
+    <aside class="admin-sidebar">
+      <div class="admin-sidebar-title">Gestión</div>
+      <div class="admin-nav-item active" id="nav-articulos" onclick="showSection('articulos')">✍️ Artículos</div>
+      <div class="admin-nav-item" id="nav-nuevo" onclick="showSection('nuevo')">➕ Nuevo artículo</div>
+      <div class="admin-nav-item" id="nav-encuestas" onclick="showSection('encuestas')">📋 Encuestas</div>
+      <div class="admin-nav-item" id="nav-roles" onclick="showSection('roles')">👥 Roles</div>
+      <div class="admin-nav-item" id="nav-usuarios" onclick="showSection('usuarios')" style="display:none">🧑‍💼 Usuarios</div>
+    </aside>
 
-        async function init() {
-            await loadSurveys();
-            await loadRoles();
+    <!-- Main content -->
+    <div>
+
+      <!-- Bootstrap admin banner (shown if not admin) -->
+      <div class="bootstrap-banner" id="bootstrapBanner">
+        <h4>⚠️ Tu cuenta aún no es administrador</h4>
+        <p>Si eres el primer usuario, haz clic para convertirte en admin. Esto solo funciona si no existe ningún admin todavía.</p>
+        <button class="btn btn-primary" onclick="makeFirstAdmin()">Convertirme en Admin</button>
+      </div>
+
+      <!-- ── ARTICLES LIST ── -->
+      <div class="admin-card active" id="section-articulos">
+        <div class="admin-card-header">
+          <h2>📰 Artículos publicados</h2>
+          <button class="btn btn-primary sm" onclick="showSection('nuevo')">+ Nuevo artículo</button>
+        </div>
+        <div id="msg-list" class="msg"></div>
+        <div id="articlesTableWrap">
+          <p style="color:var(--text-muted);text-align:center;padding:2rem">Cargando artículos…</p>
+        </div>
+      </div>
+
+      <!-- ── NEW / EDIT ARTICLE ── -->
+      <div class="admin-card" id="section-nuevo">
+        <div class="admin-card-header">
+          <h2 id="editorTitle">✍️ Nuevo artículo</h2>
+          <button class="btn sm" style="border:1px solid var(--border);color:var(--text-muted)" onclick="resetEditor()">🗑 Limpiar</button>
+        </div>
+        <div id="msg-editor" class="msg"></div>
+        <input type="hidden" id="editingId">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Título del artículo *</label>
+            <input class="form-input" id="artTitle" placeholder="Ej: Cómo escribir emails en frío efectivos" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Categoría</label>
+            <select class="form-select" id="artCategory">
+              <option value="Blog">Blog</option>
+              <option value="Guía">Guía</option>
+              <option value="Webinar">Webinar</option>
+              <option value="Caso de éxito">Caso de éxito</option>
+              <option value="Estrategia">Estrategia</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Resumen / Extracto (para la home)</label>
+          <textarea class="form-textarea" id="artExcerpt" placeholder="Breve descripción del artículo que aparecerá en la página principal…" rows="2"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">URL imagen de portada (opcional)</label>
+          <input class="form-input" id="artCover" placeholder="https://… o /uploads/imagen.jpg">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Contenido del artículo *</label>
+          <div class="quill-wrapper">
+            <div id="quillEditor"></div>
+          </div>
+        </div>
+
+        <div class="publish-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" id="artPublished" checked>
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label" id="publishLabel">Publicado (visible en la web)</span>
+        </div>
+
+        <button class="btn btn-primary" onclick="saveArticle()" style="width:100%">💾 Guardar artículo</button>
+      </div>
+
+      <!-- ── USUARIOS (solo superadmin) ── -->
+      <div class="admin-card" id="section-usuarios">
+        <div class="admin-card-header">
+          <h2>🧑‍💼 Gestión de Usuarios</h2>
+          <span style="font-size:0.8rem;color:var(--text-muted)">Solo visible para superadmin</span>
+        </div>
+        <div id="msg-users" class="msg"></div>
+        <div id="usersTableWrap">
+          <p style="color:var(--text-muted);text-align:center;padding:2rem">Cargando usuarios…</p>
+        </div>
+      </div>
+
+      <!-- ── ENCUESTAS (existing) ── -->
+      <div class="admin-card" id="section-encuestas">
+        <div class="admin-card-header">
+          <h2>📋 Generador de Enlaces de Encuesta</h2>
+        </div>
+        <p style="color:var(--text-muted);margin-bottom:1.5rem">Selecciona una encuesta y un rol para generar el link único.</p>
+
+        <div class="form-group">
+          <label class="form-label">Encuesta</label>
+          <select class="form-select" id="surveySelect"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rol</label>
+          <select class="form-select" id="roleSelect"></select>
+        </div>
+        <button onclick="generateLink()" class="btn btn-primary">Generar Link</button>
+
+        <div id="resultBox" class="link-box" style="display:none;margin-top:1rem">
+          <strong>Link Generado:</strong>
+          <p id="generatedUrl" style="word-break:break-all;color:var(--teal);margin:0.5rem 0"></p>
+          <button onclick="copyLink()" class="btn btn-outline sm">Copiar</button>
+        </div>
+      </div>
+
+      <!-- ── ROLES (existing) ── -->
+      <div class="admin-card" id="section-roles">
+        <div class="admin-card-header">
+          <h2>👥 Gestión de Roles</h2>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:1rem">
+          <input type="text" class="form-input" id="newRoleName" placeholder="Nuevo Rol (ej. Sales Manager)">
+          <button onclick="createRole()" class="btn btn-primary">Añadir</button>
+        </div>
+        <ul id="rolesList" class="role-list"></ul>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.js"></script>
+  <script>
+    const API = 'http://localhost:3000/api';
+    let quill;
+    let token = localStorage.getItem('pce_token');
+
+    // ── Auth guard ────────────────────────────────────────────
+    if (!token) { window.location.href = '/login.html'; }
+    const user = JSON.parse(localStorage.getItem('pce_user') || '{}');
+    document.getElementById('adminUserName').textContent = user.name || user.email || 'Admin';
+
+    function logout() {
+      localStorage.removeItem('pce_token');
+      localStorage.removeItem('pce_user');
+      window.location.href = '/login.html';
+    }
+
+    function authHeaders() {
+      return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+    }
+
+    // ── Check if admin ────────────────────────────────────────
+    async function checkAdmin() {
+      try {
+        const res = await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+        const me = await res.json();
+        if (me.role !== 'admin' && me.role !== 'superadmin') {
+          document.getElementById('bootstrapBanner').style.display = 'block';
         }
-
-        async function loadSurveys() {
-            const res = await fetch(`${API_URL}/surveys`);
-            const surveys = await res.json();
-            const select = document.getElementById('surveySelect');
-            select.innerHTML = surveys.map(s => `<option value="${s.id}">${s.title}</option>`).join('');
+        // Mostra tab Usuarios solo al superadmin
+        if (me.role === 'superadmin') {
+          document.getElementById('nav-usuarios').style.display = 'flex';
         }
+      } catch {}
+    }
 
-        async function loadRoles() {
-            const res = await fetch(`${API_URL}/roles`);
-            const roles = await res.json();
-            const select = document.getElementById('roleSelect');
-            const list = document.getElementById('rolesList');
+    async function makeFirstAdmin() {
+      const me = JSON.parse(localStorage.getItem('pce_user') || '{}');
+      const res = await fetch(`${API}/auth/bootstrap-admin`, {
+        method: 'POST', headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ email: me.email })
+      });
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem('pce_token', data.token);
+        token = data.token;
+        me.role = 'admin';
+        localStorage.setItem('pce_user', JSON.stringify(me));
+        document.getElementById('bootstrapBanner').style.display = 'none';
+        alert('¡Ahora eres administrador! La página se recargará.');
+        location.reload();
+      } else {
+        alert(data.error || 'Error');
+      }
+    }
 
-            select.innerHTML = roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+    // ── Section switching ─────────────────────────────────────
+    function showSection(name) {
+      document.querySelectorAll('.admin-card').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.admin-nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('section-' + name).classList.add('active');
+      document.getElementById('nav-' + name).classList.add('active');
 
-            list.innerHTML = roles.map(r => `
+      if (name === 'articulos') loadArticlesList();
+      if (name === 'encuestas') { loadSurveys(); loadRoles(); }
+      if (name === 'roles') loadRoles();
+      if (name === 'usuarios') loadUsers();
+    }
+
+    // ── Quill init ────────────────────────────────────────────
+    window.addEventListener('load', () => {
+      quill = new Quill('#quillEditor', {
+        theme: 'snow',
+        placeholder: 'Escribe el contenido del artículo…',
+        modules: {
+          toolbar: [
+            [{ header: [1, 2, 3, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ color: [] }, { background: [] }],
+            [{ list: 'ordered' }, { list: 'bullet' }],
+            [{ align: [] }],
+            ['blockquote', 'code-block'],
+            ['link', 'image'],
+            ['clean']
+          ],
+          // Image upload via server
+          clipboard: { matchVisual: false }
+        }
+      });
+
+      // Custom image handler (upload to server)
+      quill.getModule('toolbar').addHandler('image', () => {
+        const input = document.createElement('input');
+        input.type = 'file'; input.accept = 'image/*';
+        input.onchange = async () => {
+          const file = input.files[0];
+          if (!file) return;
+          const fd = new FormData();
+          fd.append('image', file);
+          try {
+            const res = await fetch(`${API}/admin/upload`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              body: fd
+            });
+            const data = await res.json();
+            if (data.url) {
+              const range = quill.getSelection();
+              quill.insertEmbed(range ? range.index : 0, 'image', `http://localhost:3000${data.url}`);
+            }
+          } catch { alert('Error subiendo imagen'); }
+        };
+        input.click();
+      });
+
+      // Publish toggle label
+      document.getElementById('artPublished').addEventListener('change', function () {
+        document.getElementById('publishLabel').textContent = this.checked
+          ? 'Publicado (visible en la web)'
+          : 'Borrador (no visible)';
+      });
+
+      checkAdmin();
+      loadArticlesList();
+    });
+
+    // ── Articles list ─────────────────────────────────────────
+    async function loadArticlesList() {
+      const wrap = document.getElementById('articlesTableWrap');
+      try {
+        const res = await fetch(`${API}/admin/articles`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.status === 403) {
+          wrap.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">⛔ Necesitas ser administrador para ver artículos.</p>';
+          return;
+        }
+        const articles = await res.json();
+        if (!articles.length) {
+          wrap.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">Aún no hay artículos. Crea el primero →</p>';
+          return;
+        }
+        wrap.innerHTML = `
+          <table class="articles-table">
+            <thead>
+              <tr>
+                <th>Título</th>
+                <th>Categoría</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${articles.map(a => `
+                <tr>
+                  <td style="font-weight:600;color:var(--primary);max-width:240px">${a.title}</td>
+                  <td><span class="status-badge published" style="background:rgba(93,156,181,0.12);color:var(--primary)">${a.category}</span></td>
+                  <td><span class="status-badge ${a.published ? 'published' : 'draft'}">${a.published ? '✅ Publicado' : '📝 Borrador'}</span></td>
+                  <td style="white-space:nowrap">${new Date(a.created_at).toLocaleDateString('es-ES')}</td>
+                  <td>
+                    <div class="table-actions">
+                      <button class="btn-icon btn-edit" onclick="editArticle(${a.id})">✏️ Editar</button>
+                      <button class="btn-icon btn-delete" onclick="deleteArticle(${a.id})">🗑</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        wrap.innerHTML = `<p style="color:#dc2626">Error: ${e.message}</p>`;
+      }
+    }
+
+    // ── Save article ──────────────────────────────────────────
+    async function saveArticle() {
+      const id = document.getElementById('editingId').value;
+      const title = document.getElementById('artTitle').value.trim();
+      const content = quill.root.innerHTML;
+      const excerpt = document.getElementById('artExcerpt').value.trim();
+      const category = document.getElementById('artCategory').value;
+      const cover_image = document.getElementById('artCover').value.trim();
+      const published = document.getElementById('artPublished').checked;
+
+      if (!title) return showMsg('msg-editor', 'El título es obligatorio', 'err');
+      if (!quill.getText().trim()) return showMsg('msg-editor', 'El contenido no puede estar vacío', 'err');
+
+      const body = { title, content, excerpt, category, cover_image, published };
+      const url = id ? `${API}/admin/articles/${id}` : `${API}/admin/articles`;
+      const method = id ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showMsg('msg-editor', id ? '✅ Artículo actualizado correctamente' : '✅ Artículo publicado correctamente', 'ok');
+        if (!id) resetEditor();
+      } catch (e) {
+        showMsg('msg-editor', '❌ ' + e.message, 'err');
+      }
+    }
+
+    async function editArticle(id) {
+      showSection('nuevo');
+      try {
+        const res = await fetch(`${API}/admin/articles/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+        const art = await res.json();
+        document.getElementById('editingId').value = art.id;
+        document.getElementById('editorTitle').textContent = '✏️ Editando artículo';
+        document.getElementById('artTitle').value = art.title;
+        document.getElementById('artCategory').value = art.category || 'Blog';
+        document.getElementById('artExcerpt').value = art.excerpt || '';
+        document.getElementById('artCover').value = art.cover_image || '';
+        document.getElementById('artPublished').checked = !!art.published;
+        document.getElementById('publishLabel').textContent = art.published ? 'Publicado (visible en la web)' : 'Borrador (no visible)';
+        quill.root.innerHTML = art.content || '';
+      } catch (e) {
+        showMsg('msg-editor', 'Error cargando artículo: ' + e.message, 'err');
+      }
+    }
+
+    async function deleteArticle(id) {
+      if (!confirm('¿Eliminar este artículo? Esta acción no se puede deshacer.')) return;
+      try {
+        await fetch(`${API}/admin/articles/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+        loadArticlesList();
+        showMsg('msg-list', '🗑 Artículo eliminado', 'ok');
+      } catch (e) {
+        showMsg('msg-list', 'Error: ' + e.message, 'err');
+      }
+    }
+
+    function resetEditor() {
+      document.getElementById('editingId').value = '';
+      document.getElementById('editorTitle').textContent = '✍️ Nuevo artículo';
+      document.getElementById('artTitle').value = '';
+      document.getElementById('artCategory').value = 'Blog';
+      document.getElementById('artExcerpt').value = '';
+      document.getElementById('artCover').value = '';
+      document.getElementById('artPublished').checked = true;
+      document.getElementById('publishLabel').textContent = 'Publicado (visible en la web)';
+      quill.setText('');
+      document.getElementById('msg-editor').classList.remove('show');
+    }
+
+    // ── Users (superadmin only) ───────────────────────────────
+    const ROLE_LABELS = { user: '👤 Usuario', admin: '🔑 Admin', superadmin: '⭐ Superadmin' };
+    const ROLE_COLORS = { user: '#e2e8f0', admin: 'rgba(93,156,181,0.15)', superadmin: 'rgba(234,179,8,0.15)' };
+
+    async function loadUsers() {
+      const wrap = document.getElementById('usersTableWrap');
+      try {
+        const res = await fetch(`${API}/superadmin/users`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.status === 403) { wrap.innerHTML = '<p style="color:#dc2626;text-align:center;padding:2rem">⛔ Solo accesible al superadmin</p>'; return; }
+        const users = await res.json();
+        wrap.innerHTML = `
+          <table class="articles-table">
+            <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Registrado</th><th>Acciones</th></tr></thead>
+            <tbody>
+              ${users.map(u => `
+                <tr>
+                  <td style="font-weight:600;color:var(--primary)">${u.name || '—'}</td>
+                  <td style="color:var(--muted)">${u.email}</td>
+                  <td>
+                    <select onchange="changeRole(${u.id}, this.value)" style="padding:0.3rem 0.5rem;border-radius:8px;border:1px solid var(--border);font-size:0.82rem;background:${ROLE_COLORS[u.role] || '#f0f0f0'}">
+                      ${['user','admin','superadmin'].map(r => `<option value="${r}" ${u.role===r?'selected':''}>${ROLE_LABELS[r]}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td style="font-size:0.8rem;color:var(--muted)">${new Date(u.created_at).toLocaleDateString('es-ES')}</td>
+                  <td>
+                    <div class="table-actions">
+                      <button class="btn-icon btn-edit" onclick="resetPassword(${u.id}, '${u.name || u.email}')">🔑 Reset pwd</button>
+                      <button class="btn-icon btn-delete" onclick="deleteUser(${u.id}, '${u.email}')">🗑</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>`;
+      } catch (e) {
+        wrap.innerHTML = `<p style="color:#dc2626">Error: ${e.message}</p>`;
+      }
+    }
+
+    async function changeRole(id, role) {
+      try {
+        const res = await fetch(`${API}/superadmin/users/${id}/role`, {
+          method: 'PUT', headers: authHeaders(), body: JSON.stringify({ role })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showMsg('msg-users', `✅ ${data.message}`, 'ok');
+        loadUsers();
+      } catch (e) { showMsg('msg-users', '❌ ' + e.message, 'err'); loadUsers(); }
+    }
+
+    async function resetPassword(id, name) {
+      const pwd = prompt(`Nueva contraseña para "${name}" (mínimo 6 caracteres):`);
+      if (!pwd) return;
+      if (pwd.length < 6) { alert('Mínimo 6 caracteres'); return; }
+      try {
+        const res = await fetch(`${API}/superadmin/users/${id}/password`, {
+          method: 'PUT', headers: authHeaders(), body: JSON.stringify({ password: pwd })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showMsg('msg-users', '✅ Contraseña actualizada', 'ok');
+      } catch (e) { showMsg('msg-users', '❌ ' + e.message, 'err'); }
+    }
+
+    async function deleteUser(id, email) {
+      if (!confirm(`¿Eliminar al usuario "${email}"? Esta acción no se puede deshacer.`)) return;
+      try {
+        const res = await fetch(`${API}/superadmin/users/${id}`, {
+          method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showMsg('msg-users', '🗑 Usuario eliminado', 'ok');
+        loadUsers();
+      } catch (e) { showMsg('msg-users', '❌ ' + e.message, 'err'); }
+    }
+
+    // ── Surveys & Roles (existing) ────────────────────────────
+    async function loadSurveys() {
+      const res = await fetch(`${API}/surveys`);
+      const surveys = await res.json();
+      const select = document.getElementById('surveySelect');
+      select.innerHTML = surveys.map(s => `<option value="${s.id}">${s.title}</option>`).join('');
+    }
+
+    async function loadRoles() {
+      const res = await fetch(`${API}/roles`);
+      const roles = await res.json();
+      const select = document.getElementById('roleSelect');
+      const list = document.getElementById('rolesList');
+      if (select) select.innerHTML = roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+      if (list) list.innerHTML = roles.map(r => `
         <li class="role-item">
           <span>${r.name}</span>
-          <span class="delete-btn" onclick="deleteRole(${r.id})" title="Eliminar">&times;</span>
+          <span class="delete-btn" onclick="deleteRole(${r.id})" title="Eliminar">×</span>
         </li>
       `).join('');
-        }
+    }
 
-        async function createRole() {
-            const name = document.getElementById('newRoleName').value;
-            if (!name) return;
-            await fetch(`${API_URL}/roles`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name })
-            });
-            document.getElementById('newRoleName').value = '';
-            loadRoles();
-        }
+    async function createRole() {
+      const name = document.getElementById('newRoleName').value;
+      if (!name) return;
+      await fetch(`${API}/roles`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name}) });
+      document.getElementById('newRoleName').value = '';
+      loadRoles();
+    }
 
-        async function deleteRole(id) {
-            if (!confirm('¿Seguro que quieres eliminar este rol? Los reportes antiguos se mantendrán.')) return;
-            await fetch(`${API_URL}/roles/${id}`, { method: 'DELETE' });
-            loadRoles();
-        }
+    async function deleteRole(id) {
+      if (!confirm('¿Eliminar este rol? Los reportes antiguos se mantendrán.')) return;
+      await fetch(`${API}/roles/${id}`, {method:'DELETE'});
+      loadRoles();
+    }
 
-        function generateLink() {
-            const surveyId = document.getElementById('surveySelect').value;
-            const roleId = document.getElementById('roleSelect').value;
-            const url = `${window.location.origin}/survey.html?s=${surveyId}&r=${roleId}`;
+    function generateLink() {
+      const surveyId = document.getElementById('surveySelect').value;
+      const roleId = document.getElementById('roleSelect').value;
+      const url = `${window.location.origin}/survey.html?s=${surveyId}&r=${roleId}`;
+      document.getElementById('generatedUrl').textContent = url;
+      document.getElementById('resultBox').style.display = 'block';
+    }
 
-            document.getElementById('generatedUrl').textContent = url;
-            document.getElementById('resultBox').style.display = 'block';
-        }
+    function copyLink() {
+      navigator.clipboard.writeText(document.getElementById('generatedUrl').textContent);
+      alert('Link copiado!');
+    }
 
-        function copyLink() {
-            const text = document.getElementById('generatedUrl').textContent;
-            navigator.clipboard.writeText(text);
-            alert('Link copiado!');
-        }
-
-        init();
-    </script>
+    // ── Util ──────────────────────────────────────────────────
+    function showMsg(id, msg, type) {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.className = `msg msg-${type} show`;
+      setTimeout(() => el.classList.remove('show'), 5000);
+    }
+  </script>
 </body>
 
 </html>
