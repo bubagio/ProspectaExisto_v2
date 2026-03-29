@@ -207,13 +207,6 @@ function seedArticles(authorId) {
         content: '<h2>Introducción</h2><p>El email frío tiene mala reputación, y en muchos casos merecida. La mayoría son largos, genéricos y centrados en quien los envía.</p><h2>Las claves</h2><p>Asunto específico, personalización real, brevedad y CTA simple de bajo compromiso.</p><h2>Conclusión</h2><p>Un buen email frío genera curiosidad. No vende directamente, abre una puerta.</p>'
       },
       {
-        title: 'Cadencia de prospección: cómo estructurar tu outreach',
-        category: 'Estrategia',
-        excerpt: 'Una acción aislada no es prospección. La cadencia convierte contactos esporádicos en oportunidades consistentes.',
-        cover_image: '/uploads/cadencia.png',
-        content: '<h2>Introducción</h2><p>La mayoría de los equipos comerciales prospectan de forma reactiva. La cadencia de prospección es la solución.</p><h2>Ejemplo cadencia 10 días</h2><p>Día 1: LinkedIn. Día 3: mensaje. Día 5: email. Día 7: llamada. Día 10: breakup email.</p><h2>Conclusión</h2><p>Sin cadencia no hay sistema. Sin sistema no hay resultados predecibles.</p>'
-      },
-      {
         title: 'El rol del SDR en 2026: más estratégico, menos operativo',
         category: 'Blog',
         excerpt: 'La automatización ha cambiado el rol del SDR para siempre. Lo que queda es más exigente, más valioso y más humano.',
@@ -226,7 +219,7 @@ function seedArticles(authorId) {
       'INSERT INTO articles (title, content, excerpt, category, cover_image, author_id, author_name, published) VALUES (?,?,?,?,?,?,?,1)'
     );
     articles.forEach(a => stmt.run(a.title, a.content, a.excerpt, a.category, a.cover_image, authorId, 'Fernando Baccari'));
-    stmt.finalize(() => console.log('✅ 5 articoli auto-seeded'));
+    stmt.finalize(() => console.log('✅ 4 articoli auto-seeded'));
   });
 }
 
