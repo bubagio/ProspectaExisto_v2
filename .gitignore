@@ -6,6 +6,8 @@ node_modules/
 
 # Local Environment & Database
 .env
+*.env
+server/.env
 server/database.sqlite
 
 # OS generated files

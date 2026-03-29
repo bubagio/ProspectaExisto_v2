@@ -11,7 +11,22 @@ const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'prospecta_secret_2026';
+
+// ── Sicurezza: variabili obbligatorie ───────────────────────────
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('\n❌ FATAL: JWT_SECRET non impostato nelle variabili ambiente.');
+  console.error('   Imposta JWT_SECRET su Railway prima di avviare il server.\n');
+  process.exit(1);
+}
+
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+if (!ADMIN_PASSWORD) {
+  console.error('\n❌ FATAL: ADMIN_PASSWORD non impostato nelle variabili ambiente.');
+  console.error('   Imposta ADMIN_PASSWORD su Railway prima di avviare il server.\n');
+  process.exit(1);
+}
+
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // ── Uploads directory ───────────────────────────────────────────
@@ -25,7 +40,22 @@ const storage = multer.diskStorage({
     cb(null, safe);
   }
 });
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
+
+// Whitelist MIME: solo immagini
+const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const ALLOWED_EXTS = /\.(jpg|jpeg|png|webp|gif)$/i;
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_MIMES.includes(file.mimetype) && ALLOWED_EXTS.test(file.originalname)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipo de archivo no permitido. Solo se aceptan imágenes JPG, PNG, WebP o GIF.'));
+    }
+  }
+});
 
 // ── Middleware ───────────────────────────────────────────────────
 app.use(cors({
@@ -129,7 +159,7 @@ async function autoSeed() {
   // 1. Superadmin
   db.get('SELECT id FROM users WHERE email = ?', ['baraccoy@gmail.com'], async (err, existing) => {
     if (err || existing) return; // già esiste, skip
-    const hash = await bcrypt.hash('12345buba88', 12);
+    const hash = await bcrypt.hash(ADMIN_PASSWORD, 12);
     db.run(
       `INSERT INTO users (email, password, name, role, gdpr_consent, gdpr_date)
        VALUES (?, ?, ?, 'superadmin', 1, CURRENT_TIMESTAMP)`,
