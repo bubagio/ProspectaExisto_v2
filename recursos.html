@@ -257,16 +257,49 @@
     }
     @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-    /* Mobile responsive */
+    /* Mobile: o lista O articolo, non entrambi */
     @media (max-width: 900px) {
       .recursos-layout { grid-template-columns: 1fr; }
+
+      /* Wrapper sidebar: posizione normale, niente sticky */
+      .sidebar-wrapper {
+        position: static;
+      }
+      /* Quando un articolo è aperto, nasconde la sidebar */
+      .sidebar-wrapper.article-open {
+        display: none;
+      }
+
+      /* Toggle: pulsante sopra la sidebar (sempre visibile nel suo contesto) */
+      .sidebar-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.85rem 1.2rem;
+        background: var(--primary);
+        color: white;
+        font-weight: 600;
+        font-size: 0.88rem;
+        cursor: pointer;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
+      /* Sidebar scroll nativo su mobile */
       .sidebar {
         position: static;
         height: auto;
+        max-height: 70vh;
+        overflow-y: auto;
         border-right: none;
         border-bottom: 1px solid rgba(27,59,90,0.08);
       }
-      .content-area { padding: 2rem 1.5rem; }
+
+      .content-area { padding: 2rem 1.2rem; }
+    }
+    @media (min-width: 901px) {
+      .sidebar-toggle { display: none; }
+      .sidebar-wrapper { position: static; }
     }
   </style>
 </head>
@@ -289,21 +322,27 @@
   </nav>
 
   <div class="recursos-layout">
-    <!-- ── Sidebar ── -->
-    <aside class="sidebar">
-      <div class="sidebar-title">Todos los artículos</div>
-      <div class="sidebar-search">
-        <input type="text" id="searchInput" placeholder="Buscar artículo…" oninput="filterArticles(this.value)">
+    <!-- ── Sidebar wrapper (toggle sticky + sidebar collassabile) ── -->
+    <div class="sidebar-wrapper">
+      <div class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+        <span id="toggleLabel">📋 Todos los artículos</span>
+        <span class="toggle-arrow">▼</span>
       </div>
-      <div id="articleList">
-        <!-- Skeleton loaders -->
-        <div style="display:flex;flex-direction:column;gap:0.5rem;padding:0.5rem 0;">
-          <div class="skeleton" style="height:80px;border-radius:12px;"></div>
-          <div class="skeleton" style="height:80px;border-radius:12px;"></div>
-          <div class="skeleton" style="height:80px;border-radius:12px;"></div>
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-title">Todos los artículos</div>
+        <div class="sidebar-search">
+          <input type="text" id="searchInput" placeholder="Buscar artículo…" oninput="filterArticles(this.value)">
         </div>
-      </div>
-    </aside>
+        <div id="articleList">
+          <!-- Skeleton loaders -->
+          <div style="display:flex;flex-direction:column;gap:0.5rem;padding:0.5rem 0;">
+            <div class="skeleton" style="height:80px;border-radius:12px;"></div>
+            <div class="skeleton" style="height:80px;border-radius:12px;"></div>
+            <div class="skeleton" style="height:80px;border-radius:12px;"></div>
+          </div>
+        </div>
+      </aside>
+    </div>
 
     <!-- ── Content area ── -->
     <main class="content-area">
@@ -402,7 +441,13 @@
 
         // Update URL
         history.pushState(null, '', `#article-${id}`);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Su mobile: collassa la sidebar e scrolla all'articolo
+        if (window.innerWidth <= 900) {
+          collapseSidebar(art.title);
+          document.querySelector('.content-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
       } catch {
         document.getElementById('viewBody').textContent = 'Error al cargar el artículo.';
       }
@@ -414,6 +459,22 @@
       document.querySelectorAll('.article-item').forEach(el => el.classList.remove('active'));
       activeId = null;
       history.pushState(null, '', window.location.pathname);
+      // Su mobile: riapri la sidebar
+      if (window.innerWidth <= 900) expandSidebar();
+    }
+
+    // ── Sidebar mobile toggle ─────────────────────────────────
+    function collapseSidebar() {
+      const wrap = document.querySelector('.sidebar-wrapper');
+      if (wrap) wrap.classList.add('article-open');
+    }
+    function expandSidebar() {
+      const wrap = document.querySelector('.sidebar-wrapper');
+      if (wrap) wrap.classList.remove('article-open');
+    }
+    function toggleSidebar() {
+      // Non usato in questo approccio, ma mantenuto per compatibilità
+      expandSidebar();
     }
 
     // ── Search ────────────────────────────────────────────────
