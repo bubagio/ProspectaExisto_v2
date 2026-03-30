@@ -8,6 +8,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const fs = require('fs');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -57,7 +59,28 @@ const upload = multer({
   }
 });
 
-// ── Middleware ───────────────────────────────────────────────────
+// ── Security Middleware ──────────────────────────────────────────
+app.disable('x-powered-by');
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://accounts.google.com'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", 'https://prospectaexistov2-production.up.railway.app'],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"]
+    }
+  },
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  frameguard: { action: 'deny' },
+  noSniff: true,
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
+}));
+
 app.use(cors({
   origin: [
     FRONTEND_URL,
@@ -68,6 +91,24 @@ app.use(cors({
   ],
   credentials: true
 }));
+
+// ── Rate Limiters ────────────────────────────────────────────────
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minuti
+  max: 20,                   // max 20 tentativi per finestra
+  message: { error: 'Demasiados intentos. Por favor espera 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const surveyLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 ora
+  max: 30,
+  message: { error: 'Demasiados envíos. Por favor espera.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '../dist')));
 app.use('/uploads', express.static(uploadDir));
@@ -291,7 +332,7 @@ function superadminMiddleware(req, res, next) {
 // ── AUTH ROUTES ──────────────────────────────────────────────────
 
 // Register
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', authLimiter, async (req, res) => {
   const { email, password, name, gdpr_consent } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
   if (!gdpr_consent) return res.status(400).json({ error: 'GDPR consent required' });
@@ -316,7 +357,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // Login
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', authLimiter, (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
@@ -717,7 +758,20 @@ app.delete('/api/superadmin/users/:id', superadminMiddleware, (req, res) => {
 app.get('/{*path}', (req, res) => {
   const distIndex = path.join(__dirname, '../dist/index.html');
   if (fs.existsSync(distIndex)) res.sendFile(distIndex);
-  else res.json({ status: 'API running', version: '2.0' });
+  else res.status(404).json({ error: 'Not found' });
+});
+
+// ── Global Error Handler ─────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  if (err.message && err.message.includes('Tipo de archivo')) {
+    return res.status(400).json({ error: err.message });
+  }
+  console.error('[ERROR]', err.message);
+  const isProd = process.env.NODE_ENV === 'production';
+  res.status(err.status || 500).json({
+    error: isProd ? 'Internal server error' : err.message
+  });
 });
 
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

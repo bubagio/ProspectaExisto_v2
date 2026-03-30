@@ -2,13 +2,6 @@ User-agent: *
 Allow: /
 Allow: /servicios.html
 Allow: /recursos.html
-
-# Pagine private — non indicizzare
-Disallow: /admin.html
-Disallow: /login.html
-Disallow: /dashboard.html
-Disallow: /surveys-editor.html
-Disallow: /survey.html
-Disallow: /uploads/
+Disallow: /assets/
 
 Sitemap: https://www.prospectaconexito.com/sitemap.xml
