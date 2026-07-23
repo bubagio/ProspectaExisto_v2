@@ -15,6 +15,10 @@ const crypto = require('crypto');
 
 const app = express();
 
+// Railway (e ogni reverse proxy cloud) imposta X-Forwarded-For.
+// Senza questo, express-rate-limit v7+ lancia ERR_ERI_UNEXPECTED_X_FORWARDED_FOR e crasha.
+app.set('trust proxy', 1);
+
 function sanitizeArticleHtml(html) {
   if (!html) return '';
   return sanitizeHtml(html, {
