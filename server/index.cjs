@@ -156,6 +156,7 @@ const surveyLimiter = rateLimit({
   legacyHeaders: false
 });
 
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '../dist'), {
   maxAge: '1d',
   setHeaders: (res, filePath) => {
