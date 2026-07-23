@@ -2,23 +2,15 @@
 <html lang="es">
 
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DYB6HCJ93F"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-DYB6HCJ93F');
-  </script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/jpeg" href="/logo.jpg">
   <title>Admin | Prospecta con Éxito</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/fonts/fonts.css">
   <!-- Quill Rich Text Editor -->
-  <link href="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.snow.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.snow.css" rel="stylesheet">
   <style>
     body { background: #f0f4f8; padding-top: 80px; }
 
@@ -248,17 +240,7 @@
     /* ── Link box ── */
     .link-box { margin-top:1.5rem; padding:1.5rem; background:#f0f9ff; border:1px solid #bde0fe; border-radius:8px; }
 
-    /* ── Bootstrap admin section ── */
-    .bootstrap-banner {
-      background: linear-gradient(135deg, #fff8e1, #fffde7);
-      border: 1px solid #f59e0b;
-      border-radius: 12px;
-      padding: 1.2rem 1.5rem;
-      margin-bottom: 1.5rem;
-      display: none;
-    }
-    .bootstrap-banner h4 { color: #92400e; margin-bottom: 0.5rem; font-size: 0.95rem; }
-    .bootstrap-banner p { color: #78350f; font-size: 0.85rem; margin-bottom: 0.75rem; }
+
 
     /* Alert */
     .msg { padding:0.75rem 1rem; border-radius:10px; font-size:0.88rem; margin-bottom:1rem; display:none; }
@@ -272,7 +254,7 @@
       .form-row { grid-template-columns:1fr; }
     }
   </style>
-  <link rel="stylesheet" crossorigin href="/assets/style-Dmav60La.css">
+  <link rel="stylesheet" crossorigin href="/assets/style-CLZfG7fx.css">
 </head>
 
 <body>
@@ -306,12 +288,7 @@
     <!-- Main content -->
     <div>
 
-      <!-- Bootstrap admin banner (shown if not admin) -->
-      <div class="bootstrap-banner" id="bootstrapBanner">
-        <h4>⚠️ Tu cuenta aún no es administrador</h4>
-        <p>Si eres el primer usuario, haz clic para convertirte en admin. Esto solo funciona si no existe ningún admin todavía.</p>
-        <button class="btn btn-primary" onclick="makeFirstAdmin()">Convertirme en Admin</button>
-      </div>
+
 
       <!-- ── ARTICLES LIST ── -->
       <div class="admin-card active" id="section-articulos">
@@ -357,8 +334,13 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">URL imagen de portada (opcional)</label>
-          <input class="form-input" id="artCover" placeholder="https://… o /uploads/imagen.jpg">
+          <label class="form-label">Imagen de portada (opcional)</label>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <input class="form-input" id="artCover" placeholder="https://… o sube un archivo" style="flex:1">
+            <input type="file" id="artCoverFile" accept="image/*" style="display:none" onchange="uploadCoverImage(this)">
+            <button type="button" class="btn" onclick="document.getElementById('artCoverFile').click()" style="background:#5D9CB5; color:white; padding:0.5rem 1rem; border-radius:8px; border:none; cursor:pointer; font-size:0.85rem; white-space:nowrap">Subir de local</button>
+          </div>
+          <span id="uploadStatus" style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; display:block"></span>
         </div>
 
         <div class="form-group">
@@ -457,34 +439,11 @@
       try {
         const res = await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
         const me = await res.json();
-        if (me.role !== 'admin' && me.role !== 'superadmin') {
-          document.getElementById('bootstrapBanner').style.display = 'block';
-        }
         // Mostra tab Usuarios solo al superadmin
         if (me.role === 'superadmin') {
           document.getElementById('nav-usuarios').style.display = 'flex';
         }
       } catch {}
-    }
-
-    async function makeFirstAdmin() {
-      const me = JSON.parse(localStorage.getItem('pce_user') || '{}');
-      const res = await fetch(`${API}/auth/bootstrap-admin`, {
-        method: 'POST', headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ email: me.email })
-      });
-      const data = await res.json();
-      if (data.token) {
-        localStorage.setItem('pce_token', data.token);
-        token = data.token;
-        me.role = 'admin';
-        localStorage.setItem('pce_user', JSON.stringify(me));
-        document.getElementById('bootstrapBanner').style.display = 'none';
-        alert('¡Ahora eres administrador! La página se recargará.');
-        location.reload();
-      } else {
-        alert(data.error || 'Error');
-      }
     }
 
     // ── Section switching ─────────────────────────────────────
@@ -539,12 +498,47 @@
             const data = await res.json();
             if (data.url) {
               const range = quill.getSelection();
-              quill.insertEmbed(range ? range.index : 0, 'image', `https://prospectaexistov2-production.up.railway.app${data.url}`);
+              const serverBase = API.replace('/api', '');
+              quill.insertEmbed(range ? range.index : 0, 'image', `${serverBase}${data.url}`);
+            } else {
+              alert('Error subiendo imagen: ' + (data.error || 'Desconocido'));
             }
           } catch { alert('Error subiendo imagen'); }
         };
         input.click();
       });
+
+    window.uploadCoverImage = async function(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const status = document.getElementById('uploadStatus');
+      status.textContent = '⏱️ Subiendo imagen...';
+      status.style.color = 'var(--primary)';
+
+      const formData = new FormData();
+      formData.append('image', file);
+
+      try {
+        const res = await fetch(`${API}/admin/upload`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`
+          },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error en la subida');
+        
+        const serverBase = API.replace('/api', '');
+        document.getElementById('artCover').value = `${serverBase}${data.url}`;
+        status.textContent = '✅ Imagen de portada subida correctamente.';
+        status.style.color = '#10b981';
+      } catch (err) {
+        status.textContent = `❌ ${err.message}`;
+        status.style.color = '#dc2626';
+      }
+    };
 
       // Publish toggle label
       document.getElementById('artPublished').addEventListener('change', function () {
@@ -567,41 +561,91 @@
           return;
         }
         const articles = await res.json();
+        wrap.innerHTML = '';
         if (!articles.length) {
-          wrap.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem">Aún no hay artículos. Crea el primero →</p>';
+          const emptyP = document.createElement('p');
+          emptyP.style.color = 'var(--text-muted)';
+          emptyP.style.textAlign = 'center';
+          emptyP.style.padding = '2rem';
+          emptyP.textContent = 'Aún no hay artículos. Crea el primero →';
+          wrap.appendChild(emptyP);
           return;
         }
-        wrap.innerHTML = `
-          <table class="articles-table">
-            <thead>
-              <tr>
-                <th>Título</th>
-                <th>Categoría</th>
-                <th>Estado</th>
-                <th>Fecha</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${articles.map(a => `
-                <tr>
-                  <td style="font-weight:600;color:var(--primary);max-width:240px">${a.title}</td>
-                  <td><span class="status-badge published" style="background:rgba(93,156,181,0.12);color:var(--primary)">${a.category}</span></td>
-                  <td><span class="status-badge ${a.published ? 'published' : 'draft'}">${a.published ? '✅ Publicado' : '📝 Borrador'}</span></td>
-                  <td style="white-space:nowrap">${new Date(a.created_at).toLocaleDateString('es-ES')}</td>
-                  <td>
-                    <div class="table-actions">
-                      <button class="btn-icon btn-edit" onclick="editArticle(${a.id})">✏️ Editar</button>
-                      <button class="btn-icon btn-delete" onclick="deleteArticle(${a.id})">🗑</button>
-                    </div>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+        
+        const table = document.createElement('table');
+        table.className = 'articles-table';
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Título</th>
+              <th>Categoría</th>
+              <th>Estado</th>
+              <th>Fecha</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
         `;
+        const tbody = document.createElement('tbody');
+        articles.forEach(a => {
+          const tr = document.createElement('tr');
+
+          const tdTitle = document.createElement('td');
+          tdTitle.style.fontWeight = '600';
+          tdTitle.style.color = 'var(--primary)';
+          tdTitle.style.maxWidth = '240px';
+          tdTitle.textContent = a.title;
+
+          const tdCategory = document.createElement('td');
+          const badgeCat = document.createElement('span');
+          badgeCat.className = 'status-badge published';
+          badgeCat.style.background = 'rgba(93,156,181,0.12)';
+          badgeCat.style.color = 'var(--primary)';
+          badgeCat.textContent = a.category;
+          tdCategory.appendChild(badgeCat);
+
+          const tdStatus = document.createElement('td');
+          const badgeStatus = document.createElement('span');
+          badgeStatus.className = `status-badge ${a.published ? 'published' : 'draft'}`;
+          badgeStatus.textContent = a.published ? '✅ Publicado' : '📝 Borrador';
+          tdStatus.appendChild(badgeStatus);
+
+          const tdDate = document.createElement('td');
+          tdDate.style.whiteSpace = 'nowrap';
+          tdDate.textContent = new Date(a.created_at).toLocaleDateString('es-ES');
+
+          const tdActions = document.createElement('td');
+          const actionsDiv = document.createElement('div');
+          actionsDiv.className = 'table-actions';
+          
+          const editBtn = document.createElement('button');
+          editBtn.className = 'btn-icon btn-edit';
+          editBtn.textContent = '✏️ Editar';
+          editBtn.onclick = () => editArticle(a.id);
+
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'btn-icon btn-delete';
+          deleteBtn.textContent = '🗑';
+          deleteBtn.onclick = () => deleteArticle(a.id);
+
+          actionsDiv.appendChild(editBtn);
+          actionsDiv.appendChild(deleteBtn);
+          tdActions.appendChild(actionsDiv);
+
+          tr.appendChild(tdTitle);
+          tr.appendChild(tdCategory);
+          tr.appendChild(tdStatus);
+          tr.appendChild(tdDate);
+          tr.appendChild(tdActions);
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        wrap.appendChild(table);
       } catch (e) {
-        wrap.innerHTML = `<p style="color:#dc2626">Error: ${e.message}</p>`;
+        wrap.innerHTML = '';
+        const errMsg = document.createElement('p');
+        errMsg.style.color = '#dc2626';
+        errMsg.textContent = `Error: ${e.message}`;
+        wrap.appendChild(errMsg);
       }
     }
 
@@ -670,6 +714,8 @@
       document.getElementById('artCategory').value = 'Blog';
       document.getElementById('artExcerpt').value = '';
       document.getElementById('artCover').value = '';
+      const status = document.getElementById('uploadStatus');
+      if (status) { status.textContent = ''; }
       document.getElementById('artPublished').checked = true;
       document.getElementById('publishLabel').textContent = 'Publicado (visible en la web)';
       quill.setText('');
@@ -686,32 +732,81 @@
         const res = await fetch(`${API}/superadmin/users`, { headers: { Authorization: `Bearer ${token}` } });
         if (res.status === 403) { wrap.innerHTML = '<p style="color:#dc2626;text-align:center;padding:2rem">⛔ Solo accesible al superadmin</p>'; return; }
         const users = await res.json();
-        wrap.innerHTML = `
-          <table class="articles-table">
-            <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Registrado</th><th>Acciones</th></tr></thead>
-            <tbody>
-              ${users.map(u => `
-                <tr>
-                  <td style="font-weight:600;color:var(--primary)">${u.name || '—'}</td>
-                  <td style="color:var(--muted)">${u.email}</td>
-                  <td>
-                    <select onchange="changeRole(${u.id}, this.value)" style="padding:0.3rem 0.5rem;border-radius:8px;border:1px solid var(--border);font-size:0.82rem;background:${ROLE_COLORS[u.role] || '#f0f0f0'}">
-                      ${['user','admin','superadmin'].map(r => `<option value="${r}" ${u.role===r?'selected':''}>${ROLE_LABELS[r]}</option>`).join('')}
-                    </select>
-                  </td>
-                  <td style="font-size:0.8rem;color:var(--muted)">${new Date(u.created_at).toLocaleDateString('es-ES')}</td>
-                  <td>
-                    <div class="table-actions">
-                      <button class="btn-icon btn-edit" onclick="resetPassword(${u.id}, '${u.name || u.email}')">🔑 Reset pwd</button>
-                      <button class="btn-icon btn-delete" onclick="deleteUser(${u.id}, '${u.email}')">🗑</button>
-                    </div>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>`;
+        
+        wrap.innerHTML = '';
+        const table = document.createElement('table');
+        table.className = 'articles-table';
+        table.innerHTML = '<thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Registrado</th><th>Acciones</th></tr></thead>';
+        const tbody = document.createElement('tbody');
+
+        users.forEach(u => {
+          const tr = document.createElement('tr');
+
+          const tdName = document.createElement('td');
+          tdName.style.fontWeight = '600';
+          tdName.style.color = 'var(--primary)';
+          tdName.textContent = u.name || '—';
+
+          const tdEmail = document.createElement('td');
+          tdEmail.style.color = 'var(--muted)';
+          tdEmail.textContent = u.email;
+
+          const tdRole = document.createElement('td');
+          const select = document.createElement('select');
+          select.style.padding = '0.3rem 0.5rem';
+          select.style.borderRadius = '8px';
+          select.style.border = '1px solid var(--border)';
+          select.style.fontSize = '0.82rem';
+          select.style.background = ROLE_COLORS[u.role] || '#f0f0f0';
+          select.onchange = (e) => changeRole(u.id, e.target.value);
+          ['user','admin','superadmin'].forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r;
+            opt.textContent = ROLE_LABELS[r];
+            if (u.role === r) opt.selected = true;
+            select.appendChild(opt);
+          });
+          tdRole.appendChild(select);
+
+          const tdDate = document.createElement('td');
+          tdDate.style.fontSize = '0.8rem';
+          tdDate.style.color = 'var(--muted)';
+          tdDate.textContent = new Date(u.created_at).toLocaleDateString('es-ES');
+
+          const tdActions = document.createElement('td');
+          const actionsDiv = document.createElement('div');
+          actionsDiv.className = 'table-actions';
+
+          const resetBtn = document.createElement('button');
+          resetBtn.className = 'btn-icon btn-edit';
+          resetBtn.textContent = '🔑 Reset pwd';
+          resetBtn.onclick = () => resetPassword(u.id, u.name || u.email);
+
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'btn-icon btn-delete';
+          deleteBtn.textContent = '🗑';
+          deleteBtn.onclick = () => deleteUser(u.id, u.email);
+
+          actionsDiv.appendChild(resetBtn);
+          actionsDiv.appendChild(deleteBtn);
+          tdActions.appendChild(actionsDiv);
+
+          tr.appendChild(tdName);
+          tr.appendChild(tdEmail);
+          tr.appendChild(tdRole);
+          tr.appendChild(tdDate);
+          tr.appendChild(tdActions);
+          tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        wrap.appendChild(table);
       } catch (e) {
-        wrap.innerHTML = `<p style="color:#dc2626">Error: ${e.message}</p>`;
+        wrap.innerHTML = '';
+        const errMsg = document.createElement('p');
+        errMsg.style.color = '#dc2626';
+        errMsg.textContent = `Error: ${e.message}`;
+        wrap.appendChild(errMsg);
       }
     }
 
@@ -759,7 +854,15 @@
       const res = await fetch(`${API}/surveys`);
       const surveys = await res.json();
       const select = document.getElementById('surveySelect');
-      select.innerHTML = surveys.map(s => `<option value="${s.id}">${s.title}</option>`).join('');
+      if (select) {
+        select.innerHTML = '';
+        surveys.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.title;
+          select.appendChild(opt);
+        });
+      }
     }
 
     async function loadRoles() {
@@ -767,26 +870,48 @@
       const roles = await res.json();
       const select = document.getElementById('roleSelect');
       const list = document.getElementById('rolesList');
-      if (select) select.innerHTML = roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-      if (list) list.innerHTML = roles.map(r => `
-        <li class="role-item">
-          <span>${r.name}</span>
-          <span class="delete-btn" onclick="deleteRole(${r.id})" title="Eliminar">×</span>
-        </li>
-      `).join('');
+      if (select) {
+        select.innerHTML = '';
+        roles.forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = r.id;
+          opt.textContent = r.name;
+          select.appendChild(opt);
+        });
+      }
+      if (list) {
+        list.innerHTML = '';
+        roles.forEach(r => {
+          const li = document.createElement('li');
+          li.className = 'role-item';
+
+          const spanName = document.createElement('span');
+          spanName.textContent = r.name;
+
+          const spanDel = document.createElement('span');
+          spanDel.className = 'delete-btn';
+          spanDel.title = 'Eliminar';
+          spanDel.textContent = '×';
+          spanDel.onclick = () => deleteRole(r.id);
+
+          li.appendChild(spanName);
+          li.appendChild(spanDel);
+          list.appendChild(li);
+        });
+      }
     }
 
     async function createRole() {
       const name = document.getElementById('newRoleName').value;
       if (!name) return;
-      await fetch(`${API}/roles`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name}) });
+      await fetch(`${API}/roles`, { method:'POST', headers: authHeaders(), body:JSON.stringify({name}) });
       document.getElementById('newRoleName').value = '';
       loadRoles();
     }
 
     async function deleteRole(id) {
       if (!confirm('¿Eliminar este rol? Los reportes antiguos se mantendrán.')) return;
-      await fetch(`${API}/roles/${id}`, {method:'DELETE'});
+      await fetch(`${API}/roles/${id}`, { method:'DELETE', headers: { Authorization: `Bearer ${token}` } });
       loadRoles();
     }
 

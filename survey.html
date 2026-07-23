@@ -2,14 +2,7 @@
 <html lang="es">
 
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DYB6HCJ93F"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-DYB6HCJ93F');
-  </script>
+
     <meta charset="UTF-8">
     <title>Encuesta - Prospecta con Éxito</title>
     <link rel="stylesheet" href="/src/style.css">
@@ -119,7 +112,22 @@
     </nav>
 
     <div class="container">
-        <div class="survey-container" id="surveyBox">
+        <!-- Survey GDPR Intro -->
+        <div class="survey-container" id="surveyIntro" style="display: none; padding: 2.2rem; max-width: 650px; margin: 2rem auto; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); background: white;">
+            <h2 id="introTitle" style="font-family: inherit; color:#1B3B5A; margin-bottom:1rem; font-weight:700; font-size:1.4rem">📋 Información de Privacidad del Cuestionario</h2>
+            <div style="font-size:0.87rem; color:#4a5568; line-height:1.6; margin-bottom:1.5rem">
+                <p style="margin-bottom:0.8rem"><strong>Responsable:</strong> Fernando Baccari (Prospecta con Éxito) · <a href="mailto:prospecta@prospectaconexito.com" style="color:#5D9CB5;text-decoration:underline">prospecta@prospectaconexito.com</a></p>
+                <p style="margin-bottom:0.8rem"><strong>Finalidad:</strong> Analizar retos, canales y objeciones de prospección comercial en función del rol profesional seleccionado para generar análisis agregados.</p>
+                <p style="margin-bottom:0.8rem"><strong>Base Jurídica:</strong> Tu consentimiento explícito al rellenar y enviar las respuestas (Art. 6.1.a RGPD).</p>
+                <p style="margin-bottom:0.8rem"><strong>Destinatarios:</strong> Los datos se almacenan de manera segura en Railway.</p>
+                <p style="margin-bottom:0.8rem"><strong>Duración:</strong> Las respuestas se conservarán por un período máximo de 1 año con fines estadísticos.</p>
+                <p style="margin-bottom:0.8rem"><strong>Naturaleza Seudónima:</strong> Este cuestionario no requiere datos identificativos directos (nombre o email). La recogida se realiza de forma seudónima vinculada al rol comercial. No obstante, no se considera anónimo en términos absolutos debido a la existencia temporal de logs técnicos de red (IP), los cuales son eliminados periódicamente.</p>
+                <p style="margin-bottom:0.8rem">⚠️ <strong>Advertencia sobre texto libre:</strong> Al responder a las preguntas de texto libre, le solicitamos que **NO** introduzca ningún dato personal identificativo o de naturaleza sensible (salud, afiliación, etc.).</p>
+            </div>
+            <button class="btn btn-primary" onclick="startSurveyAfterConsent()" style="width:100%; padding:0.85rem; font-weight:600; border-radius:8px; border:none; background:#1B3B5A; color:white; cursor:pointer; font-family:inherit">Aceptar y Comenzar Encuesta</button>
+        </div>
+
+        <div class="survey-container" id="surveyBox" style="display: none;">
             <h2 id="surveyTitle" style="margin-bottom: 1rem; font-size: 1.2rem; color: #666;">Cargando...</h2>
             <div class="progress-bar">
                 <div class="progress-fill" id="progress"></div>
@@ -140,7 +148,7 @@
     </div>
 
     <script>
-        const API_URL = 'https://prospectaexistov2-production.up.railway.app/api';
+        const API_URL = window.location.origin.includes('localhost:5173') ? 'http://localhost:3000/api' : '/api';
         const urlParams = new URLSearchParams(window.location.search);
         // Support new params s (survey) and r (role), fallback to old logic if needed
         const surveyId = urlParams.get('s') || '1'; // Default to ID 1 if missing
@@ -149,6 +157,8 @@
         let questions = [];
         let currentStep = 0;
         let answers = {};
+
+        let surveyTitleText = '';
 
         if (!roleId) {
             document.body.innerHTML = '<div class="container" style="padding-top:100px; text-align:center;"><h1>Enlace incompleto. Falta el Rol.</h1></div>';
@@ -166,31 +176,64 @@
 
             const data = await res.json();
             questions = data.questions;
-            document.getElementById('surveyTitle').innerText = data.title;
+            surveyTitleText = data.title;
 
             if (questions.length === 0) {
-                document.getElementById('questionsWrapper').innerHTML = '<p>Esta encuesta no tiene preguntas aún.</p>';
+                document.getElementById('surveyBox').style.display = 'block';
+                document.getElementById('surveyBox').innerHTML = '<h2>Esta encuesta no tiene preguntas aún.</h2>';
                 return;
             }
 
+            // Show introductory GDPR block
+            document.getElementById('surveyIntro').style.display = 'block';
+        }
+
+        window.startSurveyAfterConsent = function() {
+            document.getElementById('surveyIntro').style.display = 'none';
+            document.getElementById('surveyBox').style.display = 'block';
+            document.getElementById('surveyTitle').innerText = surveyTitleText;
             renderQuestions();
             updateProgress();
         }
 
         function renderQuestions() {
             const wrapper = document.getElementById('questionsWrapper');
-            wrapper.innerHTML = questions.map((q, index) => `
-        <div class="question-card ${index === 0 ? 'active' : ''}" data-index="${index}">
-          <div class="question-title">${q.text}</div>
-          <div class="options-list">
-            ${q.options.map(opt => `
-              <button class="option-btn" onclick="selectOption(${index}, '${opt}', this)">${opt}</button>
-            `).join('')}
-             ${q.options.includes('Otro') || q.options.includes('Otro: ______') ?
-                    `<input type="text" placeholder="Especifique otro..." class="option-btn" onchange="selectOption(${index}, this.value, this)" style="cursor:text;">` : ''}
-          </div>
-        </div>
-      `).join('');
+            wrapper.innerHTML = '';
+            
+            questions.forEach((q, index) => {
+                const card = document.createElement('div');
+                card.className = `question-card ${index === 0 ? 'active' : ''}`;
+                card.dataset.index = index;
+
+                const qTitle = document.createElement('div');
+                qTitle.className = 'question-title';
+                qTitle.textContent = q.text;
+
+                const optionsList = document.createElement('div');
+                optionsList.className = 'options-list';
+
+                q.options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.textContent = opt;
+                    btn.onclick = () => selectOption(index, opt, btn);
+                    optionsList.appendChild(btn);
+                });
+
+                if (q.options.includes('Otro') || q.options.includes('Otro: ______')) {
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.placeholder = 'Especifique otro...';
+                    input.className = 'option-btn';
+                    input.style.cursor = 'text';
+                    input.onchange = () => selectOption(index, input.value, input);
+                    optionsList.appendChild(input);
+                }
+
+                card.appendChild(qTitle);
+                card.appendChild(optionsList);
+                wrapper.appendChild(card);
+            });
 
             document.getElementById('prevBtn').onclick = prevStep;
         }

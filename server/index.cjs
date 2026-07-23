@@ -10,8 +10,55 @@ const multer = require('multer');
 const fs = require('fs');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const sanitizeHtml = require('sanitize-html');
+const crypto = require('crypto');
 
 const app = express();
+
+function sanitizeArticleHtml(html) {
+  if (!html) return '';
+  return sanitizeHtml(html, {
+    allowedTags: [
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'p', 'a', 'ul', 'ol',
+      'li', 'b', 'i', 'strong', 'em', 'u', 'strike', 'code', 'pre', 'br', 'hr', 'img', 'span', 'div'
+    ],
+    allowedAttributes: {
+      a: [ 'href', 'name', 'target', 'rel' ],
+      img: [ 'src', 'alt', 'title', 'width', 'height' ],
+      span: [ 'style' ],
+      div: [ 'style' ]
+    },
+    allowedSchemes: [ 'http', 'https', 'ftp', 'mailto', 'tel' ]
+  });
+}
+
+function stripAllTags(str) {
+  if (!str) return '';
+  return sanitizeHtml(str, {
+    allowedTags: [],
+    allowedAttributes: {}
+  });
+}
+
+function sanitizeExistingArticles() {
+  db.all('SELECT id, content, title, excerpt, category FROM articles', [], (err, rows) => {
+    if (err || !rows) return;
+    rows.forEach(row => {
+      const cleanContent = sanitizeArticleHtml(row.content);
+      const cleanTitle = stripAllTags(row.title);
+      const cleanExcerpt = stripAllTags(row.excerpt);
+      const cleanCategory = stripAllTags(row.category);
+      
+      if (cleanContent !== row.content || cleanTitle !== row.title || cleanExcerpt !== row.excerpt || cleanCategory !== row.category) {
+        db.run(
+          'UPDATE articles SET content = ?, title = ?, excerpt = ?, category = ? WHERE id = ?',
+          [cleanContent, cleanTitle, cleanExcerpt, cleanCategory, row.id]
+        );
+      }
+    });
+    console.log('✅ Bonificación/Sanitización de artículos existentes en DB finalizada.');
+  });
+}
 const PORT = process.env.PORT || 3000;
 
 // ── Sicurezza: variabili obbligatorie ───────────────────────────
@@ -109,9 +156,22 @@ const surveyLimiter = rateLimit({
   legacyHeaders: false
 });
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, '../dist')));
-app.use('/uploads', express.static(uploadDir));
+app.use(express.static(path.join(__dirname, '../dist'), {
+  maxAge: '1d',
+  setHeaders: (res, filePath) => {
+    if (filePath.includes(path.sep + 'assets' + path.sep) || filePath.includes(path.sep + 'fonts' + path.sep)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    }
+  }
+}));
+app.use('/uploads', express.static(uploadDir, {
+  maxAge: '1d',
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+  }
+}));
 
 // ── Database ─────────────────────────────────────────────────────
 const dbPath = path.resolve(__dirname, 'database.sqlite');
@@ -188,8 +248,28 @@ function createTables() {
     // Pulizia preventiva duplicati (per eventuali DB già sporchi)
     db.run(`DELETE FROM articles WHERE id NOT IN (SELECT MIN(id) FROM articles GROUP BY title)`);
 
+    // Schema updates for GDPR compliance V2
+    db.run("ALTER TABLE users ADD COLUMN marketing_consent INTEGER DEFAULT 0", [], (err) => {
+      // Ignore if column already exists
+    });
+    db.run("ALTER TABLE users ADD COLUMN gdpr_policy_version TEXT", [], (err) => {
+      // Ignore if column already exists
+    });
+
+    // Create newsletter subscriptions table with double opt-in logs
+    db.run(`CREATE TABLE IF NOT EXISTS newsletter_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE NOT NULL,
+      status TEXT DEFAULT 'pending',
+      token TEXT,
+      ip_address TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      confirmed_at DATETIME
+    )`);
+
     console.log('All tables ready.');
     autoSeed();
+    sanitizeExistingArticles();
   });
 }
 
@@ -331,22 +411,50 @@ function superadminMiddleware(req, res, next) {
 
 // ── AUTH ROUTES ──────────────────────────────────────────────────
 
+// Newsletter consent registration utility
+function registerNewsletterSubscriptionInternal(email, req) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const ip = (req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || '').replace(/:\d+$/, '');
+  const anonymizedIp = ip.split('.').slice(0, 3).join('.') + '.xxx'; // GDPR/AEPD log anonymization
+  
+  db.run(
+    "INSERT OR REPLACE INTO newsletter_subscriptions (email, status, token, ip_address) VALUES (?, 'pending', ?, ?)",
+    [email, token, anonymizedIp],
+    function (err) {
+      if (err) {
+        console.error('Error inserting newsletter subscription:', err.message);
+        return;
+      }
+      const host = req.get('host') || 'localhost:3000';
+      const protocol = req.protocol || 'http';
+      const confirmUrl = `${protocol}://${host}/api/newsletter/confirm?token=${token}`;
+      console.log(`[NEWSLETTER DUMMY MAILER] Consent proof generated for ${email}. Confirm url: ${confirmUrl}`);
+    }
+  );
+}
+
 // Register
 app.post('/api/auth/register', authLimiter, async (req, res) => {
-  const { email, password, name, gdpr_consent } = req.body;
+  const { email, password, name, gdpr_consent, marketing_consent } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
   if (!gdpr_consent) return res.status(400).json({ error: 'GDPR consent required' });
 
   try {
     const hash = await bcrypt.hash(password, 12);
+    const marketingVal = marketing_consent ? 1 : 0;
     db.run(
-      'INSERT INTO users (email, password, name, gdpr_consent, gdpr_date) VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)',
-      [email, hash, name || email.split('@')[0]],
+      "INSERT INTO users (email, password, name, gdpr_consent, gdpr_date, marketing_consent, gdpr_policy_version) VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP, ?, 'v2.0')",
+      [email, hash, name || email.split('@')[0], marketingVal],
       function (err) {
         if (err) {
           if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Email already registered' });
           return res.status(500).json({ error: err.message });
         }
+        
+        if (marketing_consent) {
+          registerNewsletterSubscriptionInternal(email, req);
+        }
+
         const token = jwt.sign({ id: this.lastID, email, role: 'user', name: name || email.split('@')[0] }, JWT_SECRET, { expiresIn: '7d' });
         res.json({ token, user: { id: this.lastID, email, name, role: 'user' } });
       }
@@ -425,21 +533,33 @@ app.get('/api/auth/google/callback', async (req, res) => {
     const payload = JSON.parse(Buffer.from(tokenData.id_token.split('.')[1], 'base64').toString());
     const { sub: googleId, email, name, picture } = payload;
 
-    // Upsert user
+    // Decoupled GDPR Verification on Google Login
     db.get('SELECT * FROM users WHERE email = ? OR google_id = ?', [email, googleId], (err, user) => {
       if (err) return res.redirect(`${FRONTEND_URL}/login.html?error=db_error`);
 
-      const upsert = user
-        ? { sql: 'UPDATE users SET google_id=?, name=?, gdpr_consent=1, gdpr_date=CURRENT_TIMESTAMP WHERE id=?', params: [googleId, name, user.id], id: user.id, role: user.role }
-        : { sql: 'INSERT INTO users (email, google_id, name, gdpr_consent, gdpr_date, role) VALUES (?,?,?,1,CURRENT_TIMESTAMP,"user")', params: [email, googleId, name], id: null, role: 'user' };
-
-      db.run(upsert.sql, upsert.params, function (e) {
-        if (e) return res.redirect(`${FRONTEND_URL}/login.html?error=db_error`);
-        const userId = upsert.id || this.lastID;
-        const role = upsert.role;
-        const token = jwt.sign({ id: userId, email, role, name }, JWT_SECRET, { expiresIn: '7d' });
-        res.redirect(`${FRONTEND_URL}/login.html?token=${token}&name=${encodeURIComponent(name)}&role=${role}`);
-      });
+      if (user && user.gdpr_consent === 1) {
+        // User already has given consent: issue temporary auth code inside oauth_token cookie
+        const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
+        res.cookie('oauth_token', token, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'lax',
+          maxAge: 5 * 60 * 1000,
+          path: '/'
+        });
+        return res.redirect(`${FRONTEND_URL}/login.html?exchange=1`);
+      } else {
+        // New user or has no gdpr_consent: issue a temporary registration state token
+        const tempToken = jwt.sign({ tempRegister: true, googleId, email, name }, JWT_SECRET, { expiresIn: '15m' });
+        res.cookie('oauth_token', tempToken, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'lax',
+          maxAge: 5 * 60 * 1000,
+          path: '/'
+        });
+        return res.redirect(`${FRONTEND_URL}/login.html?exchange=1`);
+      }
     });
   } catch (e) {
     console.error('Google OAuth error:', e);
@@ -447,32 +567,212 @@ app.get('/api/auth/google/callback', async (req, res) => {
   }
 });
 
-// ── ADMIN: Make user admin ────────────────────────────────────────
-app.post('/api/auth/make-admin', adminMiddleware, (req, res) => {
-  const { email } = req.body;
-  db.run('UPDATE users SET role = "admin" WHERE email = ?', [email], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, updated: this.changes });
-  });
+// Secure code exchange endpoint (V2 supporting decoupled consent)
+app.post('/api/auth/exchange-token', (req, res) => {
+  const cookies = req.headers.cookie;
+  if (!cookies) return res.status(401).json({ error: 'No session cookie found' });
+
+  const match = cookies.match(/(?:^|; )oauth_token=([^;]*)/);
+  if (!match) return res.status(401).json({ error: 'No active OAuth session found' });
+
+  const token = match[1];
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    res.clearCookie('oauth_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/'
+    });
+
+    if (decoded.tempRegister) {
+      // Client must trigger the GDPR screen
+      return res.json({ require_consent: true, temp_token: token });
+    }
+
+    res.json({
+      token,
+      user: {
+        id: decoded.id,
+        email: decoded.email,
+        name: decoded.name,
+        role: decoded.role
+      }
+    });
+  } catch (e) {
+    res.status(401).json({ error: 'OAuth session has expired or is invalid' });
+  }
 });
 
-// Bootstrap: make first user admin if no admins exist
-app.post('/api/auth/bootstrap-admin', (req, res) => {
-  db.get('SELECT COUNT(*) as cnt FROM users WHERE role="admin"', [], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (row.cnt > 0) return res.status(403).json({ error: 'Admin already exists' });
-    const { email } = req.body;
-    db.run('UPDATE users SET role="admin" WHERE email=?', [email], function (e) {
-      if (e) return res.status(500).json({ error: e.message });
-      // Re-sign token
-      db.get('SELECT * FROM users WHERE email=?', [email], (e2, user) => {
-        if (!user) return res.status(404).json({ error: 'User not found' });
-        const token = jwt.sign({ id: user.id, email: user.email, role: 'admin', name: user.name }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({ token, message: 'You are now admin' });
+// Completing OAuth registrations with explicit consent
+app.post('/api/auth/accept-consent', (req, res) => {
+  const { token, marketing_consent } = req.body;
+  if (!token) return res.status(400).json({ error: 'Consent token required' });
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.tempRegister) return res.status(400).json({ error: 'Invalid consent token' });
+
+    const { googleId, email, name } = decoded;
+    const marketingVal = marketing_consent ? 1 : 0;
+
+    db.get('SELECT * FROM users WHERE email = ? OR google_id = ?', [email, googleId], (err, user) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      const upsert = user
+        ? { sql: "UPDATE users SET google_id=?, name=?, gdpr_consent=1, gdpr_date=CURRENT_TIMESTAMP, marketing_consent=?, gdpr_policy_version='v2.0' WHERE id=?", params: [googleId, name, marketingVal, user.id], role: user.role, id: user.id }
+        : { sql: "INSERT INTO users (email, google_id, name, gdpr_consent, gdpr_date, marketing_consent, gdpr_policy_version, role) VALUES (?,?,?,1,CURRENT_TIMESTAMP,?, 'v2.0', 'user')", params: [email, googleId, name, marketingVal], role: 'user', id: null };
+
+      db.run(upsert.sql, upsert.params, function(e2) {
+        if (e2) return res.status(500).json({ error: e2.message });
+        const userId = upsert.id || this.lastID;
+        const role = user ? user.role : 'user';
+
+        if (marketing_consent) {
+          registerNewsletterSubscriptionInternal(email, req);
+        }
+
+        const authToken = jwt.sign({ id: userId, email, role, name }, JWT_SECRET, { expiresIn: '7d' });
+        res.json({
+          token: authToken,
+          user: { id: userId, email, name, role }
+        });
+      });
+    });
+  } catch (e) {
+    res.status(401).json({ error: 'Consent token has expired or is invalid' });
+  }
+});
+
+
+
+// ── GERTRUDE GDPR COMPLIANCE & NEWSLETTER ENDPOINTS ──────────────────
+
+// Export personal account data (Portability)
+app.get('/api/users/me/export', authMiddleware, (req, res) => {
+  db.get(
+    'SELECT id, name, email, role, gdpr_consent, gdpr_date, marketing_consent, gdpr_policy_version, created_at FROM users WHERE id = ?',
+    [req.user.id],
+    (err, row) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!row) return res.status(404).json({ error: 'User not found' });
+      
+      db.get('SELECT * FROM newsletter_subscriptions WHERE email = ?', [row.email], (err2, subRow) => {
+        const personalData = {
+          account_details: row,
+          newsletter_subscription: subRow || null
+        };
+        res.setHeader('Content-Disposition', 'attachment; filename="prospecta_personal_data.json"');
+        res.json(personalData);
+      });
+    }
+  );
+});
+
+// Delete user account cascadingally (Right to Erasure)
+app.delete('/api/users/me', authMiddleware, (req, res) => {
+  const userId = req.user.id;
+  db.get('SELECT email FROM users WHERE id = ?', [userId], (err, user) => {
+    if (err || !user) return res.status(404).json({ error: 'User not found' });
+    const userEmail = user.email;
+
+    db.serialize(() => {
+      db.run('DELETE FROM newsletter_subscriptions WHERE email = ?', [userEmail]);
+      db.run('DELETE FROM users WHERE id = ?', [userId], function (err2) {
+        if (err2) return res.status(500).json({ error: err2.message });
+        console.log(`[GDPR ERASURE] User ${userEmail} completely erased.`);
+        res.json({ success: true, message: 'Account completely and permanently erased.' });
       });
     });
   });
 });
+
+// Newsletter Subscribe (Double Opt-in trigger)
+app.post('/api/newsletter/subscribe', (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.includes('@')) return res.status(400).json({ error: 'Email inválido' });
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const ip = (req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || '').replace(/:\d+$/, '');
+  const anonymizedIp = ip.split('.').slice(0, 3).join('.') + '.xxx'; // Anonymize IP
+
+  db.run(
+    "INSERT OR REPLACE INTO newsletter_subscriptions (email, status, token, ip_address) VALUES (?, 'pending', ?, ?)",
+    [email, token, anonymizedIp],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      
+      const host = req.get('host') || 'localhost:3000';
+      const protocol = req.protocol || 'http';
+      const confirmUrl = `${protocol}://${host}/api/newsletter/confirm?token=${token}`;
+      console.log(`[NEWSLETTER DUMMY MAILER] Confirm subscription link: ${confirmUrl}`);
+      
+      res.json({ success: true, message: 'Double opt-in email sent' });
+    }
+  );
+});
+
+// Newsletter Confirm
+app.get('/api/newsletter/confirm', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).send('<h3>Token de confirmación faltante</h3>');
+  
+  db.get('SELECT * FROM newsletter_subscriptions WHERE token = ?', [token], (err, row) => {
+    if (err) return res.status(500).send('Error de base de datos');
+    if (!row) return res.status(400).send('<h3>Enlace de confirmación inválido o expirado</h3>');
+    
+    db.run(
+      "UPDATE newsletter_subscriptions SET status = 'confirmed', confirmed_at = CURRENT_TIMESTAMP WHERE token = ?",
+      [token],
+      (err2) => {
+        if (err2) return res.status(500).send('Error actualizando suscripción');
+        res.send(`
+          <div style="font-family:sans-serif; text-align:center; padding:3rem; color:#1B3B5A">
+            <h2>🎉 ¡Suscripción confirmada!</h2>
+            <p>Gracias por suscribirte a la newsletter de Prospecta con Éxito.</p>
+            <p><a href="/" style="color:#5D9CB5; font-weight:600; text-decoration:none">Volver a la página principal</a></p>
+          </div>
+        `);
+      }
+    );
+  });
+});
+
+// Newsletter Unsubscribe
+app.get('/api/newsletter/unsubscribe', (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).send('<h3>Email faltante</h3>');
+  
+  db.run('DELETE FROM newsletter_subscriptions WHERE email = ?', [email], (err) => {
+    if (err) return res.status(500).send('Error al dar de baja');
+    res.send(`
+      <div style="font-family:sans-serif; text-align:center; padding:3rem; color:#1B3B5A">
+        <h2>✅ Te has dado de baja de la newsletter</h2>
+        <p>Tu correo electrónico ha sido eliminado de nuestra lista de correo.</p>
+        <p><a href="/" style="color:#5D9CB5; font-weight:600; text-decoration:none">Volver a la página principal</a></p>
+      </div>
+    `);
+  });
+});
+
+// Periodic GDPR Data Minimization Cleanup scheduler (runs every 24 hours)
+setInterval(() => {
+  console.log('[GDPR CLEANUP JOB] Starting periodic cleanup...');
+  // 1. Delete users who initiated signup (OAuth or email) but never completed GDPR consent after 7 days
+  db.run("DELETE FROM users WHERE gdpr_consent = 0 AND created_at < date('now', '-7 days')", [], function(err) {
+    if (err) console.error('[GDPR CLEANUP JOB] Error cleaning unconsented users:', err.message);
+    else if (this.changes > 0) console.log(`[GDPR CLEANUP JOB] Suppressed ${this.changes} unconsented accounts.`);
+  });
+
+  // 2. Delete survey responses older than 1 year (as announced in the privacy policy)
+  db.run("DELETE FROM responses WHERE timestamp < date('now', '-1 year')", [], function(err) {
+    if (err) console.error('[GDPR CLEANUP JOB] Error cleaning old survey responses:', err.message);
+    else if (this.changes > 0) console.log(`[GDPR CLEANUP JOB] Purged ${this.changes} outdated survey responses.`);
+  });
+}, 24 * 60 * 60 * 1000);
+
 
 // ── ARTICLES ROUTES ──────────────────────────────────────────────
 
@@ -518,10 +818,17 @@ app.get('/api/admin/articles/:id', adminMiddleware, (req, res) => {
 app.post('/api/admin/articles', adminMiddleware, (req, res) => {
   const { title, content, excerpt, category, cover_image, published } = req.body;
   if (!title || !content) return res.status(400).json({ error: 'Title and content required' });
+  
+  const cleanTitle = stripAllTags(title);
+  const cleanContent = sanitizeArticleHtml(content);
+  const cleanExcerpt = stripAllTags(excerpt);
+  const cleanCategory = stripAllTags(category);
+  const cleanCoverImage = stripAllTags(cover_image);
+  
   const authorName = req.user.name || req.user.email;
   db.run(
     'INSERT INTO articles (title, content, excerpt, category, cover_image, author_id, author_name, published) VALUES (?,?,?,?,?,?,?,?)',
-    [title, content, excerpt || '', category || 'Blog', cover_image || '', req.user.id, authorName, published ? 1 : 0],
+    [cleanTitle, cleanContent, cleanExcerpt || '', cleanCategory || 'Blog', cleanCoverImage || '', req.user.id, authorName, published ? 1 : 0],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ id: this.lastID, message: 'Article created' });
@@ -532,9 +839,16 @@ app.post('/api/admin/articles', adminMiddleware, (req, res) => {
 // Admin: update article
 app.put('/api/admin/articles/:id', adminMiddleware, (req, res) => {
   const { title, content, excerpt, category, cover_image, published } = req.body;
+  
+  const cleanTitle = stripAllTags(title);
+  const cleanContent = sanitizeArticleHtml(content);
+  const cleanExcerpt = stripAllTags(excerpt);
+  const cleanCategory = stripAllTags(category);
+  const cleanCoverImage = stripAllTags(cover_image);
+
   db.run(
     'UPDATE articles SET title=?, content=?, excerpt=?, category=?, cover_image=?, published=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
-    [title, content, excerpt || '', category || 'Blog', cover_image || '', published ? 1 : 0, req.params.id],
+    [cleanTitle, cleanContent, cleanExcerpt || '', cleanCategory || 'Blog', cleanCoverImage || '', published ? 1 : 0, req.params.id],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ message: 'Article updated' });
@@ -551,9 +865,14 @@ app.delete('/api/admin/articles/:id', adminMiddleware, (req, res) => {
 });
 
 // Upload image for article
-app.post('/api/admin/upload', adminMiddleware, upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  res.json({ url: `/uploads/${req.file.filename}` });
+app.post('/api/admin/upload', adminMiddleware, (req, res, next) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    res.json({ url: `/uploads/${req.file.filename}` });
+  });
 });
 
 // ── SURVEY MANAGEMENT (admin) ─────────────────────────────────────
@@ -665,7 +984,7 @@ app.get('/api/roles', (req, res) => {
   });
 });
 
-app.post('/api/roles', (req, res) => {
+app.post('/api/roles', adminMiddleware, (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: "Name is required" });
   db.run("INSERT INTO roles (name) VALUES (?)", [name], function (err) {
@@ -674,7 +993,7 @@ app.post('/api/roles', (req, res) => {
   });
 });
 
-app.delete('/api/roles/:id', (req, res) => {
+app.delete('/api/roles/:id', adminMiddleware, (req, res) => {
   db.run("UPDATE roles SET is_active = 0 WHERE id = ?", [req.params.id], function (err) {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ success: true });
@@ -690,7 +1009,7 @@ app.post('/api/responses', (req, res) => {
     });
 });
 
-app.get('/api/reports/:surveyId', (req, res) => {
+app.get('/api/reports/:surveyId', adminMiddleware, (req, res) => {
   const sql = `
     SELECT r.id, roles.name as role_name, r.answers, r.timestamp 
     FROM responses r

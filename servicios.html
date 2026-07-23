@@ -1,14 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DYB6HCJ93F"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-DYB6HCJ93F');
-  </script>
+  <!-- Cookie Consent Manager & Google Consent Mode v2 -->
+  <script type="module" src="/src/cookie-consent.js"></script>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/jpeg" href="/logo.jpg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -34,9 +28,7 @@
   <meta name="twitter:description" content="Soluciones de prospección para empresas y profesionales de ventas." />
   <meta name="twitter:image" content="https://www.prospectaconexito.com/logo.jpg" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/fonts/fonts.css">
   <link rel="stylesheet" href="/src/style.css">
   <style>
     /* ─── Hero ─────────────────────────────── */
@@ -434,8 +426,19 @@
           </div>
         </div>
       </div>
-      <div class="footer-bottom">
+            <div class="footer-bottom" style="text-align: center; margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem;">
         <p>&copy; 2026 Prospecta con Éxito. Todos los derechos reservados.</p>
+        <p style="margin-top:0.5rem;font-size:0.8rem;color:rgba(255,255,255,0.4)">
+          <a href="/legal.html" style="color:rgba(255,255,255,0.5);text-decoration:underline">Aviso Legal</a>
+          &nbsp;·&nbsp;
+          <a href="/privacy.html" style="color:rgba(255,255,255,0.5);text-decoration:underline">Política de Privacidad</a>
+          &nbsp;·&nbsp;
+          <a href="/cookies.html" style="color:rgba(255,255,255,0.5);text-decoration:underline">Política de Cookies</a>
+          &nbsp;·&nbsp;
+          <a href="/terminos.html" style="color:rgba(255,255,255,0.5);text-decoration:underline">Términos de Uso</a>
+          &nbsp;·&nbsp;
+          <a href="#" onclick="event.preventDefault(); window.openCookieSettings();" style="color:rgba(255,255,255,0.5);text-decoration:underline">Configurar cookies</a>
+        </p>
       </div>
     </div>
   </footer>
@@ -476,5 +479,6 @@
       document.querySelector('[data-target="panel-profesionales"]').click();
     }
   </script>
+  
 </body>
 </html>

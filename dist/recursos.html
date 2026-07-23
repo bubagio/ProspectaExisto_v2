@@ -2,14 +2,7 @@
 <html lang="es">
 
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DYB6HCJ93F"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-DYB6HCJ93F');
-  </script>
+  <!-- Cookie Consent Manager & Google Consent Mode v2 -->
   <meta charset="UTF-8" />
   <link rel="icon" type="image/jpeg" href="/logo.jpg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -35,9 +28,7 @@
   <meta name="twitter:description" content="Guías y estrategias prácticas sobre prospección comercial B2B." />
   <meta name="twitter:image" content="https://www.prospectaconexito.com/logo.jpg" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/fonts/fonts.css">
   <style>
     body { padding-top: 72px; }
 
@@ -329,7 +320,8 @@
       .sidebar-wrapper { position: static; }
     }
   </style>
-  <link rel="stylesheet" crossorigin href="/assets/style-Dmav60La.css">
+  <script type="module" crossorigin src="/assets/cookie-consent-BhEIgCmy.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/style-CLZfG7fx.css">
 </head>
 
 <body>
@@ -378,7 +370,12 @@
       <div class="welcome-state" id="welcomeState">
         <div class="icon">📚</div>
         <h2>Recursos</h2>
-        <p>Selecciona un artículo de la barra lateral para empezar a leer. Aquí encontrarás guías, estrategias y consejos prácticos sobre prospección comercial.</p>
+        <p style="margin-bottom: 1.5rem;">Selecciona un artículo de la barra lateral para empezar a leer. Aquí encontrarás guías, estrategias y consejos prácticos sobre prospección comercial.</p>
+        <div id="rgpd-sect" style="display: none; margin-top: 1.5rem;">
+          <button class="btn btn-outline" onclick="openRgpdModal()" style="display:inline-flex; align-items:center; gap:8px; padding:0.8rem 1.6rem; font-weight:600; cursor:pointer; background:rgba(255,255,255,0.06); border-radius:10px; border:1px solid rgba(27,59,90,0.15); color:var(--primary); font-family:inherit;">
+            🛡️ Mi Cuenta (RGPD)
+          </button>
+        </div>
       </div>
 
       <!-- Article viewer -->
@@ -399,6 +396,17 @@
     </main>
   </div>
 
+  <footer class="footer" style="padding: 2rem 0; margin-top: auto; border-top: 1px solid rgba(255,255,255,0.05)">
+    <div class="container" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; font-size:0.8rem; color:rgba(255,255,255,0.4)">
+      <p>&copy; 2026 Prospecta con Éxito. Todos los derechos reservados.</p>
+      <p>
+        <a href="#" onclick="document.getElementById('gdpr-footer-modal').style.display='flex'" style="color:rgba(255,255,255,0.5);text-decoration:underline">Política de Privacidad & RGPD</a>
+        &nbsp;·&nbsp;
+        <a href="#" onclick="event.preventDefault(); window.openCookieSettings();" style="color:rgba(255,255,255,0.5);text-decoration:underline">Configurar cookies</a>
+      </p>
+    </div>
+  </footer>
+  
   <script>
     const API = 'https://prospectaexistov2-production.up.railway.app/api';
     let allArticles = [];
@@ -426,17 +434,37 @@
 
     function renderList(articles) {
       const list = document.getElementById('articleList');
+      list.innerHTML = '';
       if (!articles.length) {
-        list.innerHTML = '<p class="sidebar-empty">Aún no hay artículos publicados.<br>¡Pronto habrá contenido exclusivo!</p>';
+        const emptyMsg = document.createElement('p');
+        emptyMsg.className = 'sidebar-empty';
+        emptyMsg.innerHTML = 'Aún no hay artículos publicados.<br>¡Pronto habrá contenido exclusivo!';
+        list.appendChild(emptyMsg);
         return;
       }
-      list.innerHTML = articles.map(a => `
-        <div class="article-item ${activeId === a.id ? 'active' : ''}" onclick="openArticle(${a.id})" id="item-${a.id}">
-          <div class="a-tag">${a.category || 'Blog'}</div>
-          <div class="a-title">${a.title}</div>
-          <div class="a-date">${formatDate(a.created_at)}</div>
-        </div>
-      `).join('');
+      articles.forEach(a => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = `article-item ${activeId === a.id ? 'active' : ''}`;
+        itemDiv.id = `item-${a.id}`;
+        itemDiv.onclick = () => openArticle(a.id);
+
+        const tagDiv = document.createElement('div');
+        tagDiv.className = 'a-tag';
+        tagDiv.textContent = a.category || 'Blog';
+
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'a-title';
+        titleDiv.textContent = a.title;
+
+        const dateDiv = document.createElement('div');
+        dateDiv.className = 'a-date';
+        dateDiv.textContent = formatDate(a.created_at);
+
+        itemDiv.appendChild(tagDiv);
+        itemDiv.appendChild(titleDiv);
+        itemDiv.appendChild(dateDiv);
+        list.appendChild(itemDiv);
+      });
     }
 
     // ── Open article ──────────────────────────────────────────
@@ -522,13 +550,41 @@
     const user = JSON.parse(localStorage.getItem('pce_user') || 'null');
     const navAuth = document.getElementById('nav-auth');
     if (user) {
-      navAuth.innerHTML = `
-        <span style="color:var(--primary);font-weight:600;font-size:0.9rem">Hola, ${user.name || user.email}</span>
-        ${(user.role === 'admin' || user.role === 'superadmin') ? '<a href="/admin.html" class="btn btn-primary sm" style="margin-left:0.5rem">Admin</a>' : ''}
-        <button onclick="logout()" class="btn sm" style="background:none;border:1px solid rgba(27,59,90,0.2);color:var(--primary);cursor:pointer;margin-left:0.5rem">Salir</button>
-      `;
+      navAuth.innerHTML = '';
+
+      const span = document.createElement('span');
+      span.style.color = 'var(--primary)';
+      span.style.fontWeight = '600';
+      span.style.fontSize = '0.9rem';
+      span.textContent = `Hola, ${user.name || user.email}`;
+      navAuth.appendChild(span);
+
+      if (user.role === 'admin' || user.role === 'superadmin') {
+        const adminLink = document.createElement('a');
+        adminLink.href = '/admin.html';
+        adminLink.className = 'btn btn-primary sm';
+        adminLink.style.marginLeft = '0.5rem';
+        adminLink.textContent = 'Admin';
+        navAuth.appendChild(adminLink);
+      }
+
+      const logoutBtn = document.createElement('button');
+      logoutBtn.className = 'btn sm';
+      logoutBtn.style.background = 'none';
+      logoutBtn.style.border = '1px solid rgba(27,59,90,0.2)';
+      logoutBtn.style.color = 'var(--primary)';
+      logoutBtn.style.cursor = 'pointer';
+      logoutBtn.style.marginLeft = '0.5rem';
+      logoutBtn.textContent = 'Salir';
+      logoutBtn.onclick = logout;
+      navAuth.appendChild(logoutBtn);
     } else {
-      navAuth.innerHTML = `<a href="/login.html" class="btn btn-primary sm">Entrar</a>`;
+      navAuth.innerHTML = '';
+      const loginLink = document.createElement('a');
+      loginLink.href = '/login.html';
+      loginLink.className = 'btn btn-primary sm';
+      loginLink.textContent = 'Entrar';
+      navAuth.appendChild(loginLink);
     }
     function logout() {
       localStorage.removeItem('pce_token');
@@ -536,8 +592,99 @@
       window.location.href = '/';
     }
 
+    // Render RGPD Action section if logged in
+    if (user) {
+      document.getElementById('rgpd-sect').style.display = 'block';
+    }
+
+    window.openRgpdModal = function() {
+      if (!user) return;
+      document.getElementById('rgpd-user-name').textContent = user.name || 'Invitado';
+      document.getElementById('rgpd-user-email').textContent = user.email || '';
+      document.getElementById('rgpd-user-role').textContent = user.role || 'user';
+      document.getElementById('rgpd-modal').style.display = 'flex';
+    };
+
+    window.closeRgpdModal = function() {
+      document.getElementById('rgpd-modal').style.display = 'none';
+    };
+
+    window.downloadPortabilityData = async function() {
+      const token = localStorage.getItem('pce_token');
+      if (!token) return;
+      try {
+        const res = await fetch(`${API}/users/me/export`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Error al solicitar la exportación');
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'prospecta_personal_data.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    window.requestAccountDeletion = async function() {
+      const confirmDelete = confirm('⚠️ ¿Está completamente seguro de que desea eliminar su cuenta?\n\nEsta acción borrará de forma física y permanente todo su perfil de usuario, suscripciones a boletines y configuraciones sin posibilidad de recuperación.\n\nEste proceso es irreversible de conformidad con el artículo 17 del RGPD (Derecho de Supresión).');
+      if (!confirmDelete) return;
+
+      const token = localStorage.getItem('pce_token');
+      if (!token) return;
+      
+      try {
+        const res = await fetch(`${API}/users/me`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al eliminar la cuenta');
+        
+        alert('Su cuenta ha sido eliminada con éxito de nuestros registros.');
+        localStorage.removeItem('pce_token');
+        localStorage.removeItem('pce_user');
+        window.location.href = '/';
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
     loadArticles();
   </script>
+  <!-- RGPD Account Modal (GDPR Portability & Erasure) -->
+  <div id="rgpd-modal" style="display:none; position:fixed; inset:0; background:rgba(27,59,90,0.6); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:10000; align-items:center; justify-content:center; padding:1rem;">
+    <div style="background:white; border-radius:24px; padding:2.2rem; max-width:550px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.25); color:#1B3B5A; font-family:'Inter', sans-serif; position:relative;">
+      <button onclick="closeRgpdModal()" style="position:absolute; top:1.2rem; right:1.2rem; background:none; border:none; font-size:1.5rem; cursor:pointer; color:#94a3b8;">&times;</button>
+      <h3 style="font-family:'Outfit', sans-serif; margin-top:0; margin-bottom:0.75rem; font-size:1.35rem; font-weight:700; color:#1B3B5A">🛡️ Privacidad y Gestión de Datos (RGPD)</h3>
+      <p style="font-size:0.85rem; line-height:1.6; color:#6b7c8d; margin-bottom:1.5rem">
+        De acuerdo con la normativa europea RGPD, puedes gestionar tu cuenta, descargar tus datos transferidos o solicitar la eliminación total del perfil.
+      </p>
+
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:1.2rem; margin-bottom:2rem; font-size:0.88rem;">
+        <p style="margin:0 0 0.5rem 0;"><strong>Usuario:</strong> <span id="rgpd-user-name">...</span></p>
+        <p style="margin:0 0 0.5rem 0;"><strong>Email:</strong> <span id="rgpd-user-email">...</span></p>
+        <p style="margin:0 0 0.5rem 0;"><strong>Rol:</strong> <span id="rgpd-user-role">...</span></p>
+        <p style="margin:0;"><strong>Consiento Política de Privacidad:</strong> Sí (Versión 2.0 - Activa)</p>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <button onclick="downloadPortabilityData()" style="width:100%; border:1px solid #e2e8f0; background:white; padding:0.9rem; border-radius:10px; font-weight:600; text-align:left; cursor:pointer; display:flex; align-items:center; gap:10px; font-size:0.88rem; transition: background 0.2s; font-family:inherit; color:#1B3B5A;">
+          📥 Descargar todos mis datos personales (Portabilidad JSON)
+        </button>
+        
+        <button onclick="requestAccountDeletion()" style="width:100%; border:1px solid #fee2e2; background:#fff5f5; color:#dc2626; padding:0.9rem; border-radius:10px; font-weight:600; text-align:left; cursor:pointer; display:flex; align-items:center; gap:10px; font-size:0.88rem; transition: background 0.2s; font-family:inherit;">
+          ❌ Eliminar permanentemente mi cuenta (Derecho al olvido)
+        </button>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

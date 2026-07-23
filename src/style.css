@@ -297,7 +297,7 @@ img {
   display: flex;
   align-items: center;
   overflow: hidden;
-  background-image: url('/hero_people.png');
+  background-image: url('/hero_people.webp');
   background-size: cover;
   background-position: center;
   color: var(--white);

@@ -2,21 +2,13 @@
 <html lang="es">
 
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DYB6HCJ93F"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-DYB6HCJ93F');
-  </script>
+
   <meta charset="UTF-8" />
   <link rel="icon" type="image/jpeg" href="/logo.jpg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
   <title>Acceso | Prospecta con Éxito</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/fonts/fonts.css">
   <style>
     :root {
       --primary: #1B3B5A;
@@ -457,13 +449,19 @@
           </div>
 
           <!-- GDPR -->
-          <div class="gdpr-box">
-            <label class="gdpr-check">
-              <input type="checkbox" id="gdpr-consent" required>
-              <span class="gdpr-text">
-                He leído y acepto la <a href="#" onclick="openModal('privacy')">Política de Privacidad</a>
-                y los <a href="#" onclick="openModal('terms')">Términos de Uso</a>. Consiento el tratamiento
-                de mis datos personales conforme al <strong>Reglamento General de Protección de Datos (RGPD)</strong>.
+          <div style="margin-bottom: 0.8rem;">
+            <label class="gdpr-check" style="display: flex; gap: 8px; align-items: flex-start; cursor: pointer;">
+              <input type="checkbox" id="gdpr-consent" required style="margin-top: 3px; min-width: 16px; min-height: 16px;">
+              <span class="gdpr-text" style="font-size: 0.82rem; line-height: 1.4; color: var(--text-muted);">
+                Acepto los <a href="/terminos.html" target="_blank" style="color: var(--teal); text-decoration: underline;">Términos de Uso</a> y la <a href="/privacy.html" target="_blank" style="color: var(--teal); text-decoration: underline;">Política de Privacidad</a> para la creación de mi cuenta y prestación del servicio (Requerido).
+              </span>
+            </label>
+          </div>
+          <div style="margin-bottom: 1.2rem;">
+            <label class="gdpr-check" style="display: flex; gap: 8px; align-items: flex-start; cursor: pointer;">
+              <input type="checkbox" id="marketing-consent" style="margin-top: 3px; min-width: 16px; min-height: 16px;">
+              <span class="gdpr-text" style="font-size: 0.82rem; line-height: 1.4; color: var(--text-muted);">
+                Deseo suscribirme a la newsletter para recibir recursos comerciales, ofertas y boletine informativos gratuitos (Opcional).
               </span>
             </label>
           </div>
@@ -586,12 +584,13 @@
       const email = document.getElementById('reg-email').value;
       const password = document.getElementById('reg-pwd').value;
       const gdpr_consent = document.getElementById('gdpr-consent').checked;
+      const marketing_consent = document.getElementById('marketing-consent').checked;
 
       try {
         const res = await fetch(`${API}/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, password, gdpr_consent })
+          body: JSON.stringify({ name, email, password, gdpr_consent, marketing_consent })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Error al registrarse');
@@ -610,15 +609,69 @@
       window.location.href = (role === 'admin' || role === 'superadmin') ? '/admin.html' : '/';
     }
 
-    // ── Handle Google OAuth callback (token in URL) ─────────────
+    // ── Handle Google OAuth callback (exchange cookie for token) ─────────────
     const params = new URLSearchParams(window.location.search);
-    if (params.get('token')) {
-      const token = params.get('token');
-      const name = params.get('name') || '';
-      const role = params.get('role') || 'user';
-      localStorage.setItem('pce_token', token);
-      localStorage.setItem('pce_user', JSON.stringify({ name, role }));
-      window.location.href = (role === 'admin' || role === 'superadmin') ? '/admin.html' : '/';
+    let oauthTempToken = null;
+
+    window.cancelOauthConsent = function() {
+      document.getElementById('oauth-consent-modal').style.display = 'none';
+      oauthTempToken = null;
+      showAlert('alert-login', 'Registro cancelado: Debe aceptar los términos de uso para acceder.');
+    };
+
+    window.submitOauthConsent = async function() {
+      const acceptChk = document.getElementById('oauth-consent-chk').checked;
+      const marketingChk = document.getElementById('oauth-marketing-chk').checked;
+      const btn = document.getElementById('btn-submit-oauth-consent');
+      
+      if (!acceptChk) {
+        alert('Debe aceptar los términos de uso y la política de privacidad para continuar.');
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+      
+      try {
+        const res = await fetch(`${API}/auth/accept-consent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: oauthTempToken, marketing_consent: marketingChk })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al guardar consentimiento');
+        
+        document.getElementById('oauth-consent-modal').style.display = 'none';
+        saveAndRedirect(data);
+      } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+        btn.textContent = 'Aceptar y Registrar';
+      }
+    };
+
+    if (params.get('exchange')) {
+      showAlert('alert-login', 'Completando inicio de sesión con Google...', 'success');
+      (async () => {
+        try {
+          const res = await fetch(`${API}/auth/exchange-token`, {
+            method: 'POST',
+            credentials: 'include'
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Error al validar sesión');
+          
+          if (data.require_consent) {
+            hideAlert('alert-login');
+            oauthTempToken = data.temp_token;
+            document.getElementById('oauth-consent-modal').style.display = 'flex';
+          } else {
+            saveAndRedirect(data);
+          }
+        } catch (err) {
+          showAlert('alert-login', err.message);
+        }
+      })();
     }
     if (params.get('error') === 'google_not_configured') {
       switchTab('login');
@@ -628,12 +681,44 @@
     // ── If already logged in, redirect (only when no URL params present) ──
     // Skip redirect if we came from an OAuth callback or error — let the user see the message
     const existingToken = localStorage.getItem('pce_token');
-    const hasUrlParams = params.get('token') || params.get('error');
+    const hasUrlParams = params.get('exchange') || params.get('error');
     if (existingToken && !hasUrlParams) {
       const user = JSON.parse(localStorage.getItem('pce_user') || '{}');
       window.location.href = (user.role === 'admin' || user.role === 'superadmin') ? '/admin.html' : '/';
     }
   </script>
+  <!-- OAuth GDPR Consent Modal -->
+  <div id="oauth-consent-modal" style="display:none; position:fixed; inset:0; background:rgba(27,59,90,0.6); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:10000; align-items:center; justify-content:center; padding:1rem;">
+    <div style="background:white; border-radius:24px; padding:2.2rem; max-width:520px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.25); color:#1B3B5A; font-family:'Inter', sans-serif;">
+      <h3 style="font-family:'Outfit', sans-serif; margin-top:0; margin-bottom:1rem; font-size:1.35rem; font-weight:700">🔒 Completar Registro con Google</h3>
+      <p style="font-size:0.9rem; line-height:1.6; color:#6b7c8d; margin-bottom:1.5rem">
+        Para continuar utilizando Prospecta con Éxito con tu cuenta de Google, por favor lee y acepta nuestros términos del servicio:
+      </p>
+
+      <div style="margin-bottom:1rem;">
+        <label style="display:flex; gap:10px; cursor:pointer; font-size:0.85rem; line-height:1.5;">
+          <input type="checkbox" id="oauth-consent-chk" required style="width:18px; height:18px; margin-top:2px;">
+          <span>
+            Acepto los <a href="/terminos.html" target="_blank" style="color:#5D9CB5; text-decoration:underline; font-weight:600">Términos de Uso</a> y la <a href="/privacy.html" target="_blank" style="color:#5D9CB5; text-decoration:underline; font-weight:600">Política de Privacidad</a> para la creación de mi cuenta y prestación del servicio (Requerido).
+          </span>
+        </label>
+      </div>
+
+      <div style="margin-bottom:1.5rem;">
+        <label style="display:flex; gap:10px; cursor:pointer; font-size:0.85rem; line-height:1.5;">
+          <input type="checkbox" id="oauth-marketing-chk" style="width:18px; height:18px; margin-top:2px;">
+          <span>
+            Deseo suscribirme a la newsletter para recibir recursos comerciales y lecciones gratuitas (Opcional).
+          </span>
+        </label>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button class="btn" style="background:#cbd5e1; color:#1B3B5A; border:none; padding:0.7rem 1.4rem; border-radius:10px; font-weight:600; cursor:pointer; font-family:inherit;" onclick="cancelOauthConsent()">Cancelar</button>
+        <button class="btn" style="background:#1B3B5A; color:white; border:none; padding:0.7rem 1.4rem; border-radius:10px; font-weight:600; cursor:pointer; font-family:inherit;" id="btn-submit-oauth-consent" onclick="submitOauthConsent()">Aceptar y Registrar</button>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

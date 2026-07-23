@@ -1,20 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DYB6HCJ93F"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-DYB6HCJ93F');
-  </script>
+
   <meta charset="UTF-8"/>
+  <meta name="robots" content="noindex, nofollow">
   <title>Editor de Encuestas | Admin</title>
   <link rel="icon" type="image/jpeg" href="/logo.jpg"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/fonts/fonts.css">
   <style>
     :root {
       --primary:#1B3B5A; --teal:#5D9CB5; --teal-light:#8ec5d6;
@@ -102,7 +95,7 @@
     .modal h3{font-family:'Outfit',sans-serif;color:var(--primary);margin-bottom:1.5rem}
     .modal-actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem}
   </style>
-  <link rel="stylesheet" crossorigin href="/assets/style-Dmav60La.css">
+  <link rel="stylesheet" crossorigin href="/assets/style-CLZfG7fx.css">
 </head>
 <body>
 
@@ -207,10 +200,20 @@
   let surveys = [];
   let currentSurvey = null;
 
-  // ── Guard ──
-  const me = JSON.parse(localStorage.getItem('pce_user') || '{}');
-  if (me.role !== 'admin' && me.role !== 'superadmin') {
-    window.location.href = '/login.html';
+  // ── Guard (server-side verification) ──
+  if (!token) { window.location.href = '/login.html'; }
+
+  async function checkAuth() {
+    try {
+      const res = await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error();
+      const me = await res.json();
+      if (me.role !== 'admin' && me.role !== 'superadmin') {
+        window.location.href = '/login.html';
+      }
+    } catch {
+      window.location.href = '/login.html';
+    }
   }
 
   // ── Load surveys ──
@@ -218,17 +221,49 @@
     const res = await fetch(`${API}/surveys`);
     surveys = await res.json();
     const list = document.getElementById('surveyList');
+    list.innerHTML = '';
     if (!surveys.length) {
-      list.innerHTML = '<p style="text-align:center;color:var(--muted);padding:1rem;font-size:.85rem">No hay encuestas. Crea la primera.</p>';
+      const p = document.createElement('p');
+      p.style.textAlign = 'center';
+      p.style.color = 'var(--muted)';
+      p.style.padding = '1rem';
+      p.style.fontSize = '.85rem';
+      p.textContent = 'No hay encuestas. Crea la primera.';
+      list.appendChild(p);
       return;
     }
-    list.innerHTML = surveys.map(s => `
-      <div class="survey-item ${currentSurvey?.id === s.id ? 'active' : ''}" onclick="selectSurvey(${s.id})">
-        <span class="survey-item-title">${s.title}</span>
-        <button class="btn-icon-sm edit" onclick="event.stopPropagation(); openEditSurveyModal(${s.id})" title="Editar">✏️</button>
-        <button class="btn-icon-sm" onclick="event.stopPropagation(); deleteSurvey(${s.id})" title="Eliminar">🗑</button>
-      </div>
-    `).join('');
+    surveys.forEach(s => {
+      const item = document.createElement('div');
+      item.className = `survey-item ${currentSurvey?.id === s.id ? 'active' : ''}`;
+      item.onclick = () => selectSurvey(s.id);
+
+      const span = document.createElement('span');
+      span.className = 'survey-item-title';
+      span.textContent = s.title;
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn-icon-sm edit';
+      editBtn.title = 'Editar';
+      editBtn.textContent = '✏️';
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        openEditSurveyModal(s.id);
+      };
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-icon-sm';
+      delBtn.title = 'Eliminar';
+      delBtn.textContent = '🗑';
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        deleteSurvey(s.id);
+      };
+
+      item.appendChild(span);
+      item.appendChild(editBtn);
+      item.appendChild(delBtn);
+      list.appendChild(item);
+    });
   }
 
   async function selectSurvey(id) {
@@ -243,47 +278,140 @@
 
   function renderEditor() {
     const s = currentSurvey;
-    document.getElementById('rightPanel').innerHTML = `
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <h2>📋 ${s.title}</h2>
-            ${s.description ? `<p style="font-size:.8rem;color:var(--muted);margin-top:.2rem">${s.description}</p>` : ''}
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="openNewQModal()">+ Pregunta</button>
-        </div>
-        <div class="card-body">
-          <div id="msgQList" class="msg"></div>
-          <div id="questionsList">${renderQuestionsList(s.questions || [])}</div>
-        </div>
-      </div>`;
-  }
+    const rightPanel = document.getElementById('rightPanel');
+    rightPanel.innerHTML = '';
 
-  function renderQuestionsList(questions) {
-    if (!questions.length) return `
-      <div class="empty">
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    const cardHeader = document.createElement('div');
+    cardHeader.className = 'card-header';
+
+    const headerTextDiv = document.createElement('div');
+    const h2 = document.createElement('h2');
+    h2.textContent = `📋 ${s.title}`;
+    headerTextDiv.appendChild(h2);
+
+    if (s.description) {
+      const p = document.createElement('p');
+      p.style.fontSize = '.8rem';
+      p.style.color = 'var(--muted)';
+      p.style.marginTop = '.2rem';
+      p.textContent = s.description;
+      headerTextDiv.appendChild(p);
+    }
+
+    const addQBtn = document.createElement('button');
+    addQBtn.className = 'btn btn-primary btn-sm';
+    addQBtn.textContent = '+ Pregunta';
+    addQBtn.onclick = openNewQModal;
+
+    cardHeader.appendChild(headerTextDiv);
+    cardHeader.appendChild(addQBtn);
+
+    const cardBody = document.createElement('div');
+    cardBody.className = 'card-body';
+
+    const msgQList = document.createElement('div');
+    msgQList.id = 'msgQList';
+    msgQList.className = 'msg';
+    cardBody.appendChild(msgQList);
+
+    const questionsListDiv = document.createElement('div');
+    questionsListDiv.id = 'questionsList';
+    
+    const questions = s.questions || [];
+    if (!questions.length) {
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'empty';
+      emptyDiv.innerHTML = `
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
         <p style="font-size:.88rem">Esta encuesta no tiene preguntas. Añade la primera.</p>
-      </div>`;
+      `;
+      questionsListDiv.appendChild(emptyDiv);
+    } else {
+      questions.forEach((q, i) => {
+        const qRow = document.createElement('div');
+        qRow.className = 'question-row';
+        qRow.id = `qrow-${q.id}`;
 
-    return questions.map((q, i) => `
-      <div class="question-row" id="qrow-${q.id}">
-        <div class="question-header">
-          <span class="drag-handle">⠿</span>
-          <span class="q-num">${i + 1}</span>
-          <div style="flex:1">
-            <div class="q-text">${q.text}</div>
-            ${q.category ? `<div style="font-size:.75rem;color:var(--muted);margin-top:.2rem">📁 ${q.category}</div>` : ''}
-            ${q.options?.length ? `<div class="q-options">${q.options.map(o => `<span class="q-option">${o}</span>`).join('')}</div>` : ''}
-          </div>
-          <span class="q-type-badge">${typeLabel(q.type)}</span>
-          <div class="q-actions">
-            <button class="btn-icon-sm edit" onclick="openEditQModal(${q.id})" title="Editar">✏️</button>
-            <button class="btn-icon-sm" onclick="deleteQuestion(${q.id})" title="Eliminar">🗑</button>
-          </div>
-        </div>
-      </div>
-    `).join('');
+        const qHeader = document.createElement('div');
+        qHeader.className = 'question-header';
+
+        const dragHandle = document.createElement('span');
+        dragHandle.className = 'drag-handle';
+        dragHandle.textContent = '⠿';
+
+        const qNum = document.createElement('span');
+        qNum.className = 'q-num';
+        qNum.textContent = i + 1;
+
+        const infoDiv = document.createElement('div');
+        infoDiv.style.flex = '1';
+
+        const qText = document.createElement('div');
+        qText.className = 'q-text';
+        qText.textContent = q.text;
+        infoDiv.appendChild(qText);
+
+        if (q.category) {
+          const qCat = document.createElement('div');
+          qCat.style.fontSize = '.75rem';
+          qCat.style.color = 'var(--muted)';
+          qCat.style.marginTop = '.2rem';
+          qCat.textContent = `📁 ${q.category}`;
+          infoDiv.appendChild(qCat);
+        }
+
+        if (q.options?.length) {
+          const qOptsDiv = document.createElement('div');
+          qOptsDiv.className = 'q-options';
+          q.options.forEach(o => {
+            const optSpan = document.createElement('span');
+            optSpan.className = 'q-option';
+            optSpan.textContent = o;
+            qOptsDiv.appendChild(optSpan);
+          });
+          infoDiv.appendChild(qOptsDiv);
+        }
+
+        const qTypeBadge = document.createElement('span');
+        qTypeBadge.className = 'q-type-badge';
+        qTypeBadge.textContent = typeLabel(q.type);
+
+        const qActions = document.createElement('div');
+        qActions.className = 'q-actions';
+
+        const editQBtn = document.createElement('button');
+        editQBtn.className = 'btn-icon-sm edit';
+        editQBtn.title = 'Editar';
+        editQBtn.textContent = '✏️';
+        editQBtn.onclick = () => openEditQModal(q.id);
+
+        const delQBtn = document.createElement('button');
+        delQBtn.className = 'btn-icon-sm';
+        delQBtn.title = 'Eliminar';
+        delQBtn.textContent = '🗑';
+        delQBtn.onclick = () => deleteQuestion(q.id);
+
+        qActions.appendChild(editQBtn);
+        qActions.appendChild(delQBtn);
+
+        qHeader.appendChild(dragHandle);
+        qHeader.appendChild(qNum);
+        qHeader.appendChild(infoDiv);
+        qHeader.appendChild(qTypeBadge);
+        qHeader.appendChild(qActions);
+
+        qRow.appendChild(qHeader);
+        questionsListDiv.appendChild(qRow);
+      });
+    }
+
+    cardBody.appendChild(questionsListDiv);
+    card.appendChild(cardHeader);
+    card.appendChild(cardBody);
+    rightPanel.appendChild(card);
   }
 
   function typeLabel(t) {
@@ -377,8 +505,18 @@
   function addOption(val = '') {
     const div = document.createElement('div');
     div.className = 'option-row';
-    div.innerHTML = `<input class="form-control" placeholder="Opción..." value="${val}">
-      <button onclick="this.parentElement.remove()">✕</button>`;
+
+    const input = document.createElement('input');
+    input.className = 'form-control';
+    input.placeholder = 'Opción...';
+    input.value = val;
+
+    const btn = document.createElement('button');
+    btn.textContent = '✕';
+    btn.onclick = () => div.remove();
+
+    div.appendChild(input);
+    div.appendChild(btn);
     document.getElementById('optionsList').appendChild(div);
   }
 
@@ -423,7 +561,10 @@
   }
 
   // ── Init ──
-  loadSurveys();
+  (async () => {
+    await checkAuth();
+    loadSurveys();
+  })();
 </script>
 </body>
 </html>

@@ -2,15 +2,9 @@
 <html lang="es">
 
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DYB6HCJ93F"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-DYB6HCJ93F');
-  </script>
+
     <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow">
     <title>Analytics Avanzado - Prospecta con Éxito</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Library for simple PDF export (Print based) or we can use window.print() styled -->
@@ -133,7 +127,7 @@
             /* Smaller for print */
         }
     </style>
-  <link rel="stylesheet" crossorigin href="/assets/style-Dmav60La.css">
+  <link rel="stylesheet" crossorigin href="/assets/style-CLZfG7fx.css">
 </head>
 
 <body>
@@ -193,15 +187,37 @@
 
     <script>
         const API_URL = 'https://prospectaexistov2-production.up.railway.app/api';
+        const token = localStorage.getItem('pce_token');
         let globalData = { roles: [], questions: [], reports: [], survey: null };
         let charts = [];
 
+        async function checkAuth() {
+            if (!token) { window.location.href = '/login.html'; return; }
+            try {
+                const res = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+                if (!res.ok) throw new Error();
+                const me = await res.json();
+                if (me.role !== 'admin' && me.role !== 'superadmin') {
+                    window.location.href = '/login.html';
+                }
+            } catch {
+                window.location.href = '/login.html';
+            }
+        }
+
         async function init() {
+            await checkAuth();
             // Load Surveys first to populate dropdown
             const res = await fetch(`${API_URL}/surveys`);
             const surveys = await res.json();
             const select = document.getElementById('surveyFilter');
-            select.innerHTML = surveys.map(s => `<option value="${s.id}">${s.title}</option>`).join('');
+            select.innerHTML = '';
+            surveys.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.title;
+                select.appendChild(opt);
+            });
 
             // Load Initial Data
             loadSurveyData();
@@ -214,7 +230,7 @@
             const [surveyRes, rolesRes, reportsRes] = await Promise.all([
                 fetch(`${API_URL}/surveys/${surveyId}`),
                 fetch(`${API_URL}/roles`),
-                fetch(`${API_URL}/reports/${surveyId}`)
+                fetch(`${API_URL}/reports/${surveyId}`, { headers: { Authorization: `Bearer ${token}` } })
             ]);
 
             const survey = await surveyRes.json();
@@ -278,10 +294,19 @@
                     }
                 });
 
-                card.innerHTML = `
-          <div class="question-header">Q${index + 1}. ${q.text}</div>
-          <div class="chart-wrapper"><canvas id="${canvasId}"></canvas></div>
-        `;
+                const qHeader = document.createElement('div');
+                qHeader.className = 'question-header';
+                qHeader.textContent = `Q${index + 1}. ${q.text}`;
+
+                const chartWrapper = document.createElement('div');
+                chartWrapper.className = 'chart-wrapper';
+                
+                const canvas = document.createElement('canvas');
+                canvas.id = canvasId;
+
+                chartWrapper.appendChild(canvas);
+                card.appendChild(qHeader);
+                card.appendChild(chartWrapper);
                 container.appendChild(card);
 
                 const ctx = document.getElementById(canvasId).getContext('2d');
@@ -342,11 +367,41 @@
 
             const pctDisplay = (maxConsensus.pct * 100).toFixed(0);
 
-            box.innerHTML = `
-        <p><strong>Tendencia Principal Detectada:</strong> El <strong>${pctDisplay}%</strong> de los encuestados coinciden en que <em>"${maxConsensus.text}"</em> es la respuesta clave para: "${maxConsensus.q}".</p>
-        <p>Este patrón sugiere una fuerte alineación en esta área. Para roles como <strong>${document.getElementById('roleFilter').value === 'all' ? 'todos los departamentos' : document.getElementById('roleFilter').value}</strong>, esto representa una oportunidad prioritaria.</p>
-        <p style="margin-top:10px; font-size:0.9rem; color:#555;">* Resumen generado automáticamente basado en ${reports.length} respuestas.</p>
-      `;
+            box.innerHTML = '';
+
+            const p1 = document.createElement('p');
+            p1.innerHTML = '<strong>Tendencia Principal Detectada:</strong> ';
+
+            const pctSpan = document.createElement('strong');
+            pctSpan.textContent = `${pctDisplay}%`;
+            p1.appendChild(pctSpan);
+
+            p1.appendChild(document.createTextNode(' de los encuestados coinciden en que '));
+
+            const emText = document.createElement('em');
+            emText.textContent = `"${maxConsensus.text}"`;
+            p1.appendChild(emText);
+
+            p1.appendChild(document.createTextNode(` es la respuesta clave para: "${maxConsensus.q}".`));
+            box.appendChild(p1);
+
+            const p2 = document.createElement('p');
+            p2.appendChild(document.createTextNode('Este patrón sugiere una fuerte alineación en esta área. Para roles como '));
+            
+            const roleFilterVal = document.getElementById('roleFilter').value;
+            const strongRole = document.createElement('strong');
+            strongRole.textContent = roleFilterVal === 'all' ? 'todos los departamentos' : roleFilterVal;
+            p2.appendChild(strongRole);
+
+            p2.appendChild(document.createTextNode(', esto representa una oportunidad prioritaria.'));
+            box.appendChild(p2);
+
+            const p3 = document.createElement('p');
+            p3.style.marginTop = '10px';
+            p3.style.fontSize = '0.9rem';
+            p3.style.color = '#555';
+            p3.textContent = `* Resumen generado automáticamente basado en ${reports.length} respuestas.`;
+            box.appendChild(p3);
         }
 
         init();
